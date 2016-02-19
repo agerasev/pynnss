@@ -16,6 +16,13 @@ class Path:
 		self.dst.data = data
 		self.stack.append(data)
 
+	def bshift(self):
+		assert self.src.data == None
+		error = self.dst.data
+		self.dst.data = None
+		data = self.stack.pop()
+		self.src.data = (error, data)
+
 	def clear(self):
 		self.stack.clear()
 		

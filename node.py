@@ -65,7 +65,7 @@ class ElemNode(Node):
 
 import numpy as np
 
-class ConvNode(ElemNode):
+class ProductNode(ElemNode):
 	# sin/sout - size of inputs/outputs
 	def __init__(self, sin, sout):
 		ElemNode.__init__(self, [sin], [sout])
@@ -77,7 +77,7 @@ class ConvNode(ElemNode):
 	def randomize(self):
 		sin = self.ins[0].size
 		sout = self.outs[0].size
-		self.weight = 2*np.random.rand(sin, sout) - 1
+		self.weight = 2*np.random.rand(sout, sin) - 1
 		self.bias = 2*np.random.rand(sout) - 1
 
 	def _repr(self):
@@ -87,3 +87,19 @@ class ConvNode(ElemNode):
 		return rs
 	def __repr__(self):
 		return '{\n' + self._repr() + '\n}'
+
+# Uniform
+class UniformNode(ElemNode):
+	def __init__(self, size):
+		ElemNode.__init__(self, [size], [size])
+
+	def _step(self):
+		self.outs[0].data = self.ins[0].data
+
+# Sigmoid function
+class SigmoidNode(ElemNode):
+	def __init__(self, size):
+		ElemNode.__init__(self, [size], [size])
+
+	def _step(self):
+		self.outs[0].data = np.tanh(self.ins[0].data)
