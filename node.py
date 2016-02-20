@@ -1,105 +1,65 @@
 #!/usr/bin/python3
 
-# Node is structural unit of NN
-
-class Site:
-	def __init__(self, size):
-		self.size = size
-		self.data = None
-	def _repr(self):
-		return 'size: ' + str(self.size) + ', data: ' + str(self.data)
-	def __repr__(self):
-		return '{' + self._repr() + '}'
-
+# Node is structural unit of network
 class Node:
-	# nin/nout - number of inputs/outputs
-	def __init__(self, nin, nout):
-		self.ins = [None]*nin
-		self.outs = [None]*nout
+	class Site:
+		def __init__(self, size):
+			self.size = size
 
-	def _pre(self):
-		for site in self.outs:
-			assert site.data is None, 'out site is not empty'
-	def _post(self):
-		for site in self.ins:
-			site.data = None
-	def _step(self):
+	def __init__(self, nins, nouts):
+		self.ins = [None]*nins
+		self.outs = [None]*nouts
+
+	def _gnins(self):
+		return len(self.ins)
+	nins = property(_gnins)
+
+	def _gnouts(self):
+		return len(self.outs)
+	nouts = property(_gnouts)
+
+	# stores state of node 
+	class _Memory:
+		vins = None
+		vouts = None
+		def __init__(self, vins, vouts):
+			self.vins = vins
+			self.vouts = vouts
+
+	def Memory(self):
+		return Node._Memory([None]*self.nins, [None]*self.nouts)
+
+	# takes state and input data
+	# returns new state and output data
+	def _step(self, mem, vins):
 		raise NotImplementedError()
-	def step(self):
-		self._pre()
-		self._step()
-		self._post()
-		
-	def clear(self):
+
+	def step(self, mem, vins):
+		(newmem, vouts) = self._step(mem, vins)
+		newmem.vins = vins
+		newmem.vouts = vouts
+		return (newmem, vouts)
+
+	# stores learn results
+	class _Experience:
+		eins = None
+		eouts = None
+		def __init__(self, nins, nouts):
+			self.eins = [None]*nins
+			self.eouts = [None]*nouts
+
+	def Experience(self):
+		return Node._Experience(self.nins, self.nouts)
+
+	# takes state, experience and output error
+	# modifies existing experience
+	# returns input error
+
+	def _learn(self, exp, mem, eouts):
 		raise NotImplementedError()
 
-	def _repr(self):
-		return 'ins: ' + str(self.ins) + ', outs: ' + str(self.outs)
-	def __repr__(self):
-		return '{' + self._repr() + '}'
-
-class ElemNode(Node):
-	# lsin/lsout - lists of input/output sizes
-	def __init__(self, lsin, lsout):
-		nin = len(lsin)
-		nout = len(lsout)
-		Node.__init__(self, nin, nout)
-		for i in range(nin):
-			self.ins[i] = Site(lsin[i])
-		for i in range(nout):
-			self.outs[i] = Site(lsout[i])
-
-	def step(self):
-		Node._pre(self)
-		found = False
-		for site in self.ins:
-			if site.data is not None:
-				found = True
-				break
-		if found:
-			self._step()
-			Node._post(self)
-
-	def clear(self):
-		pass
-
-import numpy as np
-
-class ProductNode(ElemNode):
-	# sin/sout - size of inputs/outputs
-	def __init__(self, sin, sout):
-		ElemNode.__init__(self, [sin], [sout])
-		self.randomize()
-
-	def _step(self):
-		self.outs[0].data = np.dot(self.weight, self.ins[0].data) + self.bias
-
-	def randomize(self):
-		sin = self.ins[0].size
-		sout = self.outs[0].size
-		self.weight = 2*np.random.rand(sout, sin) - 1
-		self.bias = 2*np.random.rand(sout) - 1
-
-	def _repr(self):
-		rs = ''
-		rs += ElemNode._repr(self) + ',\n'
-		rs += 'weight:\n' + str(self.weight) + ',\nbias: ' + str(self.bias)
-		return rs
-	def __repr__(self):
-		return '{\n' + self._repr() + '\n}'
-
-# Uniform
-class UniformNode(ElemNode):
-	def __init__(self, size):
-		ElemNode.__init__(self, [size], [size])
-
-	def _step(self):
-		self.outs[0].data = self.ins[0].data
-
-# Sigmoid function
-class SigmoidNode(ElemNode):
-	def __init__(self, size):
-		ElemNode.__init__(self, [size], [size])
-
-	def _step(self):
-		self.outs[0].data = np.tanh(self.ins[0].data)
+	def learn(self, exp, mem, eouts):
+		eins = self._learn(exp, mem, eouts)
+		exp.eins = eins
+		exp.eouts = eouts
+		return eins

@@ -5,11 +5,12 @@ from node import Node
 # Network is a Node that contains other Nodes connected with each other with Paths
 
 class Network(Node):
-	# nin/nout - number of inputs/outputs
 	def __init__(self, nin, nout):
 		Node.__init__(self, nin, nout)
-		self.nodes = []
-		self.paths = []
+		self.nodes = {}
+		self.paths = {}
+
+	
 
 	def _step(self):
 		for path in self.paths:
@@ -22,12 +23,3 @@ class Network(Node):
 			path.clear()
 		for node in self.nodes:
 			node.clear()
-
-	def __repr__(self):
-		rstr = ''
-		rstr += '{\n'
-		rstr += 'Node: ' + Node.__repr__(self) + ',\n'
-		rstr += 'nodes: ' + str(self.nodes) + ',\n'
-		rstr += 'paths: ' + str(self.paths) + '\n'
-		rstr += '}'
-		return rstr
