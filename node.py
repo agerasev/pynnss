@@ -22,12 +22,12 @@ class Node:
 	class _Memory:
 		vins = None
 		vouts = None
-		def __init__(self, vins, vouts):
-			self.vins = vins
-			self.vouts = vouts
+		def __init__(self, nins, nouts):
+			self.vins = [None]*nins
+			self.vouts = [None]*nouts
 
 	def Memory(self):
-		return Node._Memory([None]*self.nins, [None]*self.nouts)
+		return Node._Memory(self.nins, self.nouts)
 
 	# takes state and input data
 	# returns new state and output data
@@ -35,10 +35,10 @@ class Node:
 		raise NotImplementedError()
 
 	def step(self, mem, vins):
-		(newmem, vouts) = self._step(mem, vins)
-		newmem.vins = vins
-		newmem.vouts = vouts
-		return (newmem, vouts)
+		(nmem, vouts) = self._step(mem, vins)
+		nmem.vins = vins
+		nmem.vouts = vouts
+		return (nmem, vouts)
 
 	# stores learn results
 	class _Experience:

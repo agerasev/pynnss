@@ -49,5 +49,4 @@ for k in range(0x10):
 		node.learn(nexp, 1e-2/batch_size)
 
 	print(str(k) + ' cost: ' + str(cost/batch_size/batches_num))
-
-print(str(node.weight))
+	
