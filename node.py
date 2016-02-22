@@ -55,11 +55,14 @@ class Node:
 	# modifies existing experience
 	# returns input error
 
-	def _learn(self, exp, mem, eouts):
+	def _backprop(self, exp, mem, eouts):
 		raise NotImplementedError()
 
-	def learn(self, exp, mem, eouts):
-		eins = self._learn(exp, mem, eouts)
+	def backprop(self, exp, mem, eouts):
+		eins = self._backprop(exp, mem, eouts)
 		exp.eins = eins
 		exp.eouts = eouts
 		return eins
+
+	def learn(self, exp, rate):
+		raise NotImplementedError()

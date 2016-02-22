@@ -53,11 +53,15 @@ class Product(Element):
 	def Experience(self):
 		return Product._Experience(self.sin, self.sout)
 
-	def _learn(self, exp, mem, eouts):
+	def _backprop(self, exp, mem, eouts):
 		exp.gbias += eouts[0]
 		exp.gweight += np.outer(mem.vins[0], eouts[0])
 		eins = [np.dot(self.weight, eouts[0])]
 		return eins
+
+	def learn(self, exp, rate):
+		self.weight -= rate*exp.gweight
+		self.bias -= rate*exp.gbias
 
 	def randomize(self):
 		self.weight = 2*np.random.rand(self.sin, self.sout) - 1
@@ -72,6 +76,9 @@ class Scalar(Element):
 		return len(self.ins[0].size)
 	size = property(_gsize)
 
+	def learn(self, exp, rate):
+		pass
+
 
 class Uniform(Scalar):
 	def __init__(self, size):
@@ -80,7 +87,7 @@ class Uniform(Scalar):
 	def _vstep(self, vins):
 		return [vins[0]]
 
-	def _learn(self, exp, mem, eouts):
+	def _backprop(self, exp, mem, eouts):
 		return [eouts[0]]
 
 
@@ -91,5 +98,5 @@ class Sigmoid(Scalar):
 	def _vstep(self, vins):
 		return [np.tanh(vins[0])]
 
-	def _learn(self, exp, mem, eouts):
+	def _backprop(self, exp, mem, eouts):
 		return [eouts[0]*(1/np.cosh(mem.vins[0]))**2]
