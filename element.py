@@ -16,19 +16,18 @@ class Element(Node):
 		for j in range(nouts):
 			self.outs[j] = Node.Site(souts[j])
 
-	def _vstep(self, vins):
+	def step(self, vins):
 		raise NotImplementedError()
 
-	def _step(self, mem, vins):
-		vouts = self._vstep(vins)
-		return (Node._Memory(vins, vouts), vouts)
+	def _feedforward(self, mem, vins):
+		vouts = self.step(vins)
+		return (Node._Memory(), vouts)
 
 class Product(Element):
-	weight = None
-	bias = None
-
 	def __init__(self, sin, sout):
 		Element.__init__(self, [sin], [sout])
+		self.weight = None
+		self.bias = None
 		self.randomize()
 
 	def _gsin(self):
@@ -39,14 +38,12 @@ class Product(Element):
 		return self.outs[0].size
 	sout = property(_gsout)
 
-	def _vstep(self, vins):
+	def step(self, vins):
 		return [np.dot(vins[0], self.weight) + self.bias]
 
 	class _Experience(Node._Experience):
-		gweight = None
-		gbias = None
 		def __init__(self, sin, sout):
-			Node._Experience.__init__(self, 1, 1)
+			Node._Experience.__init__(self)
 			self.gweight = np.zeros((sin, sout))
 			self.gbias = np.zeros((sout))
 
@@ -84,7 +81,7 @@ class Uniform(Scalar):
 	def __init__(self, size):
 		Scalar.__init__(self, size)
 	
-	def _vstep(self, vins):
+	def step(self, vins):
 		return [vins[0]]
 
 	def _backprop(self, exp, mem, eouts):
@@ -95,7 +92,7 @@ class Sigmoid(Scalar):
 	def __init__(self, size):
 		Scalar.__init__(self, size)
 
-	def _vstep(self, vins):
+	def step(self, vins):
 		return [np.tanh(vins[0])]
 
 	def _backprop(self, exp, mem, eouts):

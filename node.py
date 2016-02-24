@@ -20,36 +20,32 @@ class Node:
 
 	# stores state of node 
 	class _Memory:
-		vins = None
-		vouts = None
-		def __init__(self, nins, nouts):
-			self.vins = [None]*nins
-			self.vouts = [None]*nouts
+		def __init__(self):
+			self.vins = None
+			self.vouts = None
 
 	def Memory(self):
-		return Node._Memory(self.nins, self.nouts)
+		return Node._Memory()
 
 	# takes state and input data
 	# returns new state and output data
-	def _step(self, mem, vins):
+	def _feedforward(self, mem, vins):
 		raise NotImplementedError()
 
-	def step(self, mem, vins):
-		(nmem, vouts) = self._step(mem, vins)
+	def feedforward(self, mem, vins):
+		(nmem, vouts) = self._feedforward(mem, vins)
 		nmem.vins = vins
 		nmem.vouts = vouts
 		return (nmem, vouts)
 
 	# stores learn results
 	class _Experience:
-		eins = None
-		eouts = None
-		def __init__(self, nins, nouts):
-			self.eins = [None]*nins
-			self.eouts = [None]*nouts
+		def __init__(self):
+			self.eins = None
+			self.eouts = None
 
 	def Experience(self):
-		return Node._Experience(self.nins, self.nouts)
+		return Node._Experience()
 
 	# takes state, experience and output error
 	# modifies existing experience
