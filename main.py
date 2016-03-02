@@ -17,7 +17,7 @@ net.paths.append(Path((-1, 0), (0, 0)))
 net.paths.append(Path((0, 0), (1, 0)))
 net.paths.append(Path((1, 0), (-1, 0)))
 
-net.cache()
+net.update()
 
 vins = [np.array([0,0,0,0])]
 (mem, vouts) = net.feedforward(net.Memory(), vins)

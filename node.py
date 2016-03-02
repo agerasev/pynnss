@@ -43,6 +43,7 @@ class Node:
 		def __init__(self):
 			self.eins = None
 			self.eouts = None
+			self.count = 0
 
 	def Experience(self):
 		return Node._Experience()
@@ -58,6 +59,7 @@ class Node:
 		eins = self._backprop(exp, mem, eouts)
 		exp.eins = eins
 		exp.eouts = eouts
+		exp.count += 1
 		return eins
 
 	def learn(self, exp, rate):

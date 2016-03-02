@@ -15,7 +15,7 @@ class Network(Node):
 		self._fpath_cache = {}
 		self._bpath_cache = {}
 
-	def cache(self):
+	def update(self):
 		for i in range(len(self.paths)):
 			p = self.paths[i]
 			self._fpath_cache[p.src] = i
@@ -26,7 +26,14 @@ class Network(Node):
 			Node._Memory.__init__(self)
 			self.nodes = {}
 			self.pipes = []
-
+		
+		def next(self):
+			nmem = Network._Memory()
+			for key in self.nodes:
+				nmem.nodes[key] = None
+			for i in range(len(self.pipes)):
+				nmem.pipes.append(Pipe(self.pipes[i].data))
+			return nmem
 
 	def Memory(self):
 		mem = Network._Memory()
@@ -35,14 +42,6 @@ class Network(Node):
 		for i in range(len(self.paths)):
 			mem.pipes.append(Pipe())
 		return mem
-
-	def _MemNext(self, mem):
-		nmem = Network._Memory()
-		for key in self.nodes:
-			nmem.nodes[key] = None
-		for i in range(len(mem.pipes)):
-			nmem.pipes.append(Pipe(mem.pipes[i].data))
-		return nmem
 
 	def step(self, mem, nmem):
 		found = False
@@ -69,7 +68,7 @@ class Network(Node):
 		return found
 
 	def _feedforward(self, mem, vins):
-		nmem = self._MemNext(mem)
+		nmem = mem.next()
 		for i in range(self.nins):
 			nmem.pipes[self._fpath_cache[(-1, i)]].data = vins[i]
 		found = True
@@ -79,9 +78,67 @@ class Network(Node):
 		for i in range(self.nouts):
 			pipe = nmem.pipes[self._bpath_cache[(-1, i)]]
 			if pipe.data is None:
-				raise Exception('Output is None, possibly caused by wrong structure')
+				raise Exception('Output is empty, possibly caused by wrong structure')
 			vouts.append(pipe.data)
 			pipe.data = None
 		return (nmem, vouts)
 
+	class _Experience(Node._Experience):
+		def __init__(self):
+			Node._Experience.__init__(self)
+			self.nodes = {}
+			self.pipes = []
 
+	def Experience(self):
+		exp = Network._Experience()
+		for key in self.nodes:
+			exp.nodes[key] = self.nodes[key].Experience()
+		for i in range(len(self.paths)):
+			exp.pipes.append(Pipe())
+		return exp
+
+	def stepback(self, exp, mem):
+		found = False
+		for key in self.nodes:
+			eouts = []
+			node = self.nodes[key]
+			for i in range(node.nouts):
+				pipe = exp.pipes[self._fpath_cache[(key, i)]]
+				if pipe.data is not None:
+					eouts.append(pipe.data)
+			if len(eouts) != node.nouts:
+				continue
+			if exp.nodes[key].count > self.count:
+				raise Exception('Node activated twice')
+			eins = node.backprop(exp.nodes[key], mem.nodes[key], eouts)
+			for i in range(node.nouts):
+				exp.pipes[self._fpath_cache[(key, i)]].data = None
+			for i in range(node.nins):
+				pipe = exp.pipes[self._bpath_cache[(key, i)]]
+				if pipe.data is not None:
+					raise Exception('Input pipe is not empty')
+				pipe.data = eins[i]
+			found = True
+		return found
+
+	def _backprop(self, exp, mem, eouts):
+		for i in range(self.nouts):
+			pipe = exp.pipes[self._bpath_cache[(-1, i)]]
+			if pipe.data is not None:
+				raise Exception('Output is not empty')
+			pipe.data = eouts[i]
+		found = True
+		while found:
+			found = self.stepback(exp, mem)
+		eins = []
+		for i in range(self.nins):
+			pipe = exp.pipes[self._fpath_cache[(-1, i)]]
+			if pipe.data is None:
+				raise Exception('Input is empty, possibly caused by wrong structure')
+			eins.append(pipe.data)
+			pipe.data = None
+		return eins
+
+	def learn(self, exp, rate):
+		for key in self.nodes:
+			self.nodes[key].learn(exp.nodes[key], rate)
