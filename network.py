@@ -108,7 +108,7 @@ class Network(Node):
 					eouts.append(pipe.data)
 			if len(eouts) != node.nouts:
 				continue
-			if exp.nodes[key].count > self.count:
+			if exp.nodes[key].count > exp.count:
 				raise Exception('Node activated twice')
 			eins = node.backprop(exp.nodes[key], mem.nodes[key], eouts)
 			for i in range(node.nouts):
