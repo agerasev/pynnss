@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
-from node import Node
-from path import Pipe
+from pynn.node import Node
+from pynn.path import Pipe
 
 # Network is a Node that contains other Nodes connected with each other with Paths
 
