@@ -131,6 +131,19 @@ class Sigmoid(Vector):
 	def learn(self, exp, rate):
 		pass
 
+class Rectifier(Vector):
+	def __init__(self, size):
+		Vector.__init__(self, size)
+
+	def step(self, vins):
+		return [np.log(1 + np.exp(vins[0]))]
+
+	def backstep(self, exp, mem, eouts):
+		e = np.exp(-mem.vins[0])
+		return [eouts[0]/(1 + e)]
+
+	def learn(self, exp, rate):
+		pass
 
 class Mixer(Element):
 	def __init__(self, size, nins, nouts):
