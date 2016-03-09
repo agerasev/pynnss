@@ -45,6 +45,9 @@ class Node:
 			self.eouts = None
 			self.count = 0
 
+		def clip(self, val):
+			pass
+
 	def Experience(self):
 		return Node._Experience()
 

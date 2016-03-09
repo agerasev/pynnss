@@ -52,6 +52,9 @@ class Matrix(Element):
 			Node._Experience.__init__(self)
 			self.gweight = np.zeros((sin, sout))
 
+		def clip(self, val):
+			self.gweight = np.clip(self.gweight, -val, val)
+
 	def Experience(self):
 		return Matrix._Experience(self.sin, self.sout)
 
@@ -90,6 +93,9 @@ class Bias(Vector):
 			Node._Experience.__init__(self)
 			self.gbias = np.zeros(size)
 
+		def clip(self, val):
+			self.gbias = np.clip(self.gbias, -val, val)
+
 	def Experience(self):
 		return Bias._Experience(self.size)
 
@@ -118,7 +124,7 @@ class Uniform(Vector):
 		pass
 
 
-class Sigmoid(Vector):
+class Tanh(Vector):
 	def __init__(self, size):
 		Vector.__init__(self, size)
 

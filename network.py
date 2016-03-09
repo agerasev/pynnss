@@ -89,6 +89,10 @@ class Network(Node):
 			self.nodes = {}
 			self.pipes = []
 
+		def clip(self, val):
+			for key in self.nodes:
+				self.nodes[key].clip(val)
+
 	def Experience(self):
 		exp = Network._Experience()
 		for key in self.nodes:
