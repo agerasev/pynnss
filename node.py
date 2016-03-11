@@ -40,16 +40,20 @@ class Node:
 
 	# stores learn results
 	class _Experience:
-		def __init__(self):
+		def __init__(self, par):
 			self.eins = None
 			self.eouts = None
 			self.count = 0
 
-		def clip(self, val):
+		def _clean(self):
 			pass
 
-	def Experience(self):
-		return Node._Experience()
+		def clean(self):
+			self.count = 0
+			self._clean()
+
+	def Experience(self, par):
+		return Node._Experience(par)
 
 	# takes state, experience and output error
 	# modifies existing experience

@@ -48,15 +48,21 @@ class Matrix(Element):
 		return [np.dot(vins[0], self.weight)]
 
 	class _Experience(Node._Experience):
-		def __init__(self, sin, sout):
-			Node._Experience.__init__(self)
+		def __init__(self, par, sin, sout):
+			Node._Experience.__init__(self, par)
 			self.gweight = np.zeros((sin, sout))
 
-		def clip(self, val):
-			self.gweight = np.clip(self.gweight, -val, val)
+			self.clip = par["clip"]
+			self.adagrad = par["adagrad"]
 
-	def Experience(self):
-		return Matrix._Experience(self.sin, self.sout)
+			if self.adagrad:
+				self.aweight = 1e-6 + np.zeros_like(self.gweight)
+
+		def _clean(self):
+			self.gweight = np.zeros_like(self.gweight)
+
+	def Experience(self, par):
+		return Matrix._Experience(par, self.sin, self.sout)
 
 	def backstep(self, exp, mem, eouts):
 		exp.gweight += np.outer(mem.vins[0], eouts[0])
@@ -64,7 +70,11 @@ class Matrix(Element):
 		return eins
 
 	def learn(self, exp, rate):
-		self.weight -= rate*exp.gweight
+		nweight = np.clip(exp.gweight/exp.count, -exp.clip, exp.clip)
+		if exp.adagrad:
+			exp.aweight += nweight**2
+			rate = rate/np.sqrt(exp.aweight)
+		self.weight -= rate*nweight
 
 	def randomize(self):
 		self.weight = 2*np.random.rand(self.sin, self.sout) - 1
@@ -89,22 +99,32 @@ class Bias(Vector):
 		return [vins[0] + self.bias]
 
 	class _Experience(Node._Experience):
-		def __init__(self, size):
-			Node._Experience.__init__(self)
+		def __init__(self, par, size):
+			Node._Experience.__init__(self, par)
 			self.gbias = np.zeros(size)
 
-		def clip(self, val):
-			self.gbias = np.clip(self.gbias, -val, val)
+			self.clip = par["clip"]
+			self.adagrad = par["adagrad"]
 
-	def Experience(self):
-		return Bias._Experience(self.size)
+			if self.adagrad:
+				self.abias = 1e-6 + np.zeros_like(self.gbias)
+
+		def _clean(self):
+			self.gbias = np.zeros_like(self.gbias)
+
+	def Experience(self, par):
+		return Bias._Experience(par, self.size)
 
 	def backstep(self, exp, mem, eouts):
 		exp.gbias += eouts[0]
 		return [eouts[0]]
 
 	def learn(self, exp, rate):
-		self.bias -= rate*exp.gbias
+		nbias = np.clip(exp.gbias/exp.count, -exp.clip, exp.clip)
+		if exp.adagrad:
+			exp.abias += nbias**2
+			rate = rate/np.sqrt(exp.abias)
+		self.bias -= rate*nbias
 
 	def randomize(self):
 		self.bias = 2*np.random.rand(self.size) - 1

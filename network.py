@@ -84,19 +84,19 @@ class Network(Node):
 		return (nmem, vouts)
 
 	class _Experience(Node._Experience):
-		def __init__(self):
-			Node._Experience.__init__(self)
+		def __init__(self, par):
+			Node._Experience.__init__(self, par)
 			self.nodes = {}
 			self.pipes = []
 
-		def clip(self, val):
+		def _clean(self):
 			for key in self.nodes:
-				self.nodes[key].clip(val)
+				self.nodes[key].clean()
 
-	def Experience(self):
-		exp = Network._Experience()
+	def Experience(self, par):
+		exp = Network._Experience(par)
 		for key in self.nodes:
-			exp.nodes[key] = self.nodes[key].Experience()
+			exp.nodes[key] = self.nodes[key].Experience(par)
 		for i in range(len(self.paths)):
 			exp.pipes.append(Pipe())
 		return exp
