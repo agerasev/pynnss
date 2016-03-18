@@ -6,14 +6,14 @@ from pynn.path import Pipe
 # Network is a Node that contains other Nodes connected with each other with Paths
 
 class Network(Node):
-	class State(Node.State):
+	class _State(Node._State):
 		def __init__(self):
-			Node.State.__init__(self)
+			Node._State.__init__(self)
 			self.nodes = {}
 			self.pipes = []
 
 		def __copy__(self):
-			state = Network.State()
+			state = Network._State()
 			for key in self.nodes:
 				state.nodes[key] = copy(self.nodes[key])
 			for i in range(len(self.pipes)):
@@ -21,21 +21,21 @@ class Network(Node):
 			return state
 
 	def newState(self):
-		state = self.State()
+		state = self._State()
 		for key in self.nodes:
 			state.nodes[key] = self.nodes[key].newState()
 		for i in range(len(self.paths)):
 			state.pipes.append(Pipe())
 		return state
 
-	class Error(Node.Error):
+	class _Error(Node._Error):
 		def __init__(self):
-			Node.Error.__init__(self)
+			Node._Error.__init__(self)
 			self.nodes = {}
 			self.pipes = []
 
 		def __copy__(self):
-			error = Network.State()
+			error = Network._State()
 			for key in self.nodes:
 				error.nodes[key] = copy(self.nodes[key])
 			for i in range(len(self.pipes)):
@@ -43,20 +43,28 @@ class Network(Node):
 			return error
 
 	def newError(self):
-		error = self.Error()
+		error = self._Error()
 		for key in self.nodes:
 			error.nodes[key] = self.nodes[key].newError()
 		for i in range(len(self.paths)):
 			error.pipes.append(Pipe())
 		return error
 
-	class Gradient(Node.Gradient):
+	class _Gradient(Node._Gradient):
 		def __init__(self):
-			Node.Gradient.__init__(self)
+			Node._Gradient.__init__(self)
 			self.nodes = {}
 
+		def mul(self, factor):
+			for key in self.nodes:
+				self.nodes[key].mul(factor)
+
+		def clip(self, value):
+			for key in self.nodes:
+				self.nodes[key].clip(value)
+
 	def newGradient(self):
-		grad = self.Gradient()
+		grad = self._Gradient()
 		for key in self.nodes:
 			grad.nodes[key] = self.nodes[key].newGradient()
 		return grad
@@ -113,7 +121,7 @@ class Network(Node):
 			info.activated[key] += 1
 
 			# propagate signal through node
-			vouts = node.feedforward(state.nodes[key], vins)
+			vouts = node.transmit(state.nodes[key], vins)
 
 			# put outputs into pipes
 			for i in range(node.nouts):

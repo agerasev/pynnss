@@ -7,9 +7,9 @@ import numpy as np
 # Element is basic, zero-state node
 
 class Element(Node):
-	class Gradient(Node.Gradient):
+	class _Gradient(Node._Gradient):
 		def __init__(self):
-			Node.Gradient.__init__(self)
+			Node._Gradient.__init__(self)
 
 		def mul(self, factor):
 			pass
@@ -29,7 +29,7 @@ class Element(Node):
 	def step(self, vins):
 		raise NotImplementedError()
 
-	def _feedforward(self, state, vins):
+	def _transmit(self, state, vins):
 		return self.step(vins)
 
 	def backstep(self, grad, state, eouts):
@@ -39,13 +39,13 @@ class Element(Node):
 		return self.backstep(grad, state, eouts)
 
 class MatrixElement(Element):
-	class Gradient(Element.Gradient):
+	class _Gradient(Element._Gradient):
 		def __init__(self, sin, sout):
 			self.sin = sin
 			self.sout = sout
 
 	def newGradient(self):
-		return self.Gradient(self.sin, self.sout)
+		return self._Gradient(self.sin, self.sout)
 
 	def __init__(self, sin, sout):
 		Element.__init__(self, [sin], [sout])
@@ -60,9 +60,9 @@ class MatrixElement(Element):
 
 # MatrixProduct multiplies input vector by matrix
 class MatrixProduct(MatrixElement):
-	class Gradient(MatrixElement.Gradient):
+	class _Gradient(MatrixElement._Gradient):
 		def __init__(self, sin, sout):
-			MatrixElement.Gradient.__init__(self, sin, sout)
+			MatrixElement._Gradient.__init__(self, sin, sout)
 			self.weight = np.zeros((sin, sout))
 
 		def mul(self, factor):
@@ -93,13 +93,13 @@ class MatrixProduct(MatrixElement):
 
 
 class VectorElement(Element):
-	class Gradient(Element.Gradient):
+	class _Gradient(Element._Gradient):
 		def __init__(self, size):
-			Element.Gradient.__init__(self)
+			Element._Gradient.__init__(self)
 			self.size = size
 
 	def newGradient(self):
-		return self.Gradient(self.size)
+		return self._Gradient(self.size)
 
 	def __init__(self, size):
 		Element.__init__(self, [size], [size])
@@ -110,9 +110,9 @@ class VectorElement(Element):
 
 
 class Bias(VectorElement):
-	class Gradient(VectorElement.Gradient):
+	class _Gradient(VectorElement._Gradient):
 		def __init__(self, size):
-			VectorElement.Gradient.__init__(self, size)
+			VectorElement._Gradient.__init__(self, size)
 			self.bias = np.zeros(size)
 
 		def mul(self, factor):

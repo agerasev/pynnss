@@ -8,31 +8,31 @@ class Node:
 			self.size = size
 
 	# stores state of node 
-	class State:
+	class _State:
 		def __init__(self):
 			self.vins = None
 			self.vouts = None
 
 		def __copy__(self):
-			return Node.State()
+			return Node._State()
 
 	def newState(self):
-		return self.State()
+		return self._State()
 
 	# stores node errors
-	class Error:
+	class _Error:
 		def __init__(self):
 			self.eins = None
 			self.eouts = None
 
 		def __copy__(self):
-			return Node.Error()
+			return Node._Error()
 
 	def newError(self):
-		return self.Error()
+		return self._Error()
 
 	# stores learn results
-	class Gradient:
+	class _Gradient:
 		def __init__(self):
 			pass
 
@@ -43,7 +43,7 @@ class Node:
 			raise NotImplementedError()
 
 	def newGradient(self):
-		return self.Gradient()
+		return self._Gradient()
 
 
 	def __init__(self, nins, nouts):
@@ -74,11 +74,10 @@ class Node:
 	# takes state, error state, gradient and output error
 	# modifies existing gradient and error state
 	# returns input error
-	def backprop(self, state, error, grad, eouts):
-		eins = self._backprop(exp, mem, eouts)
-		exp.eins = eins
-		exp.eouts = eouts
-		exp.count += 1
+	def backprop(self, grad, error, state, eouts):
+		eins = self._backprop(grad, error, state, eouts)
+		error.eins = eins
+		error.eouts = eouts
 		return eins
 
 	def _backprop(self, grad, error, state, eouts):
