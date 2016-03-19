@@ -3,6 +3,8 @@
 from pynn.node import Node
 from pynn.path import Pipe
 
+from copy import copy
+
 # Network is a Node that contains other Nodes connected with each other with Paths
 
 class Network(Node):
@@ -174,7 +176,7 @@ class Network(Node):
 			# check all node output pipes is ready
 			pipecount = 0
 			for i in range(node.nouts):
-				pipe = state.pipes[self._flink[(key, i)]]
+				pipe = error.pipes[self._flink[(key, i)]]
 				if pipe.data is not None:
 					pipecount += 1
 				else:
@@ -187,7 +189,7 @@ class Network(Node):
 			# extract ouput errors from pipes
 			eouts = []
 			for i in range(node.nouts):
-				pipe = state.pipes[self._flink[(key, i)]]
+				pipe = error.pipes[self._flink[(key, i)]]
 				eouts.append(pipe.data)
 				pipe.data = None
 
@@ -197,11 +199,14 @@ class Network(Node):
 			info.activated[key] += 1
 
 			# backpropagate error through node
-			eins = node.backprop(grad.nodes[key], error.nodes[key], state.nodes[key], eouts)
+			node_grad = None
+			if grad is not None:
+				node_grad = grad.nodes[key]
+			eins = node.backprop(node_grad, error.nodes[key], state.nodes[key], eouts)
 
 			# put input errors into pipes
 			for i in range(node.nins):
-				pipe = state.pipes[self._blink[(key, i)]]
+				pipe = error.pipes[self._blink[(key, i)]]
 				if pipe.data is not None:
 					raise Exception('Node ' + str(key) + ' input pipe is not empty')
 				pipe.data = eins[i]
@@ -218,7 +223,7 @@ class Network(Node):
 		# put output errors in pipes
 		for i in range(self.nouts):
 			pidx = self._blink[(-1, i)]
-			pipe = state.pipes[pidx]
+			pipe = error.pipes[pidx]
 			if pipe.data is not None:
 				raise Exception('Output pipe ' + str(pidx) + ' is not empty')
 			pipe.data = eouts[i]
@@ -233,7 +238,7 @@ class Network(Node):
 		eins = []
 		for i in range(self.nins):
 			pidx = self._flink[(-1, i)]
-			pipe = state.pipes[pidx]
+			pipe = error.pipes[pidx]
 			if pipe.data is None:
 				raise Exception('Input pipe ' + str(pidx) + ' is empty')
 			eins.append(pipe.data)

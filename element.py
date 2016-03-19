@@ -79,7 +79,8 @@ class MatrixProduct(MatrixElement):
 		return [np.dot(vins[0], self.weight)]
 
 	def backstep(self, grad, state, eouts):
-		grad.weight += np.outer(state.vins[0], eouts[0])
+		if grad is not None:
+			grad.weight += np.outer(state.vins[0], eouts[0])
 		eins = [np.dot(self.weight, eouts[0])]
 		return eins
 
@@ -129,7 +130,8 @@ class Bias(VectorElement):
 		return [vins[0] + self.bias]
 
 	def backstep(self, grad, state, eouts):
-		grad.bias += eouts[0]
+		if grad is not None:
+			grad.bias += eouts[0]
 		return [eouts[0]]
 
 	def learn(self, grad, rate):
