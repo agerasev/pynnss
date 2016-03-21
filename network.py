@@ -58,12 +58,14 @@ class Network(Node):
 			self.nodes = {}
 
 		def mul(self, factor):
-			for key in self.nodes:
-				self.nodes[key].mul(factor)
+			for key, node in self.nodes.items():
+				if node is not None:
+					node.mul(factor)
 
 		def clip(self, value):
-			for key in self.nodes:
-				self.nodes[key].clip(value)
+			for key, node in self.nodes.items():
+				if node is not None:
+					node.clip(value)
 
 	def newGradient(self):
 		grad = self._Gradient()

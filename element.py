@@ -8,16 +8,22 @@ import numpy as np
 
 class Element(Node):
 	class _Gradient(Node._Gradient):
-		def __init__(self):
+		def __init__(self, state):
 			Node._Gradient.__init__(self)
+			self.state = np.zeros_like(state)
 
 		def mul(self, factor):
-			pass
+			self.state *= factor
 
 		def clip(self, value):
-			pass
+			self.state = np.clip(self.state, -value, value)
 
-	def __init__(self, sins, souts):
+	def newGradient(self):
+		if self.state is None:
+			return None
+		return self._Gradient(self.state)
+
+	def __init__(self, sins, souts, state=None):
 		nins = len(sins)
 		nouts = len(souts)
 		Node.__init__(self, nins, nouts)
@@ -25,6 +31,7 @@ class Element(Node):
 			self.ins[j] = Node.Site(sins[j])
 		for j in range(nouts):
 			self.outs[j] = Node.Site(souts[j])
+		self.state = state
 
 	def step(self, vins):
 		raise NotImplementedError()
@@ -38,17 +45,13 @@ class Element(Node):
 	def _backprop(self, grad, error, state, eouts):
 		return self.backstep(grad, state, eouts)
 
+	def learn(self, grad, rate):
+		if grad is not None:
+			self.state -= rate*grad.state
+
 class MatrixElement(Element):
-	class _Gradient(Element._Gradient):
-		def __init__(self, sin, sout):
-			self.sin = sin
-			self.sout = sout
-
-	def newGradient(self):
-		return self._Gradient(self.sin, self.sout)
-
-	def __init__(self, sin, sout):
-		Element.__init__(self, [sin], [sout])
+	def __init__(self, sin, sout, state=None):
+		Element.__init__(self, [sin], [sout], state)
 
 	def _gsin(self):
 		return self.ins[0].size
@@ -60,50 +63,28 @@ class MatrixElement(Element):
 
 # MatrixProduct multiplies input vector by matrix
 class MatrixProduct(MatrixElement):
-	class _Gradient(MatrixElement._Gradient):
-		def __init__(self, sin, sout):
-			MatrixElement._Gradient.__init__(self, sin, sout)
-			self.weight = np.zeros((sin, sout))
-
-		def mul(self, factor):
-			self.weight *= factor
-
-		def clip(self, value):
-			self.weight = np.clip(self.weight, -value, value)
-
 	def __init__(self, sin, sout):
-		MatrixElement.__init__(self, sin, sout)
-		self.randomize()
+		MatrixElement.__init__(self, sin, sout, 2*(np.random.rand(sin, sout) - 0.5))
+
+	def _gweight(self):
+		return self.state
+	def _sweight(self, weight):
+		self.state = weight
+	weight = property(_gweight, _sweight)
 
 	def step(self, vins):
 		return [np.dot(vins[0], self.weight)]
 
 	def backstep(self, grad, state, eouts):
 		if grad is not None:
-			grad.weight += np.outer(state.vins[0], eouts[0])
+			grad.state += np.outer(state.vins[0], eouts[0])
 		eins = [np.dot(self.weight, eouts[0])]
 		return eins
 
-	def learn(self, grad, rate):
-		#	exp.aweight += nweight**2
-		#	rate = rate/np.sqrt(exp.aweight)
-		self.weight -= rate*grad.weight
-
-	def randomize(self):
-		self.weight = 2*np.random.rand(self.sin, self.sout) - 1
-
 
 class VectorElement(Element):
-	class _Gradient(Element._Gradient):
-		def __init__(self, size):
-			Element._Gradient.__init__(self)
-			self.size = size
-
-	def newGradient(self):
-		return self._Gradient(self.size)
-
-	def __init__(self, size):
-		Element.__init__(self, [size], [size])
+	def __init__(self, size, state=None):
+		Element.__init__(self, [size], [size], state)
 
 	def _gsize(self):
 		return self.ins[0].size
@@ -111,36 +92,22 @@ class VectorElement(Element):
 
 
 class Bias(VectorElement):
-	class _Gradient(VectorElement._Gradient):
-		def __init__(self, size):
-			VectorElement._Gradient.__init__(self, size)
-			self.bias = np.zeros(size)
-
-		def mul(self, factor):
-			self.bias *= factor
-
-		def clip(self, value):
-			self.bias = np.clip(self.bias, -value, value)
-
 	def __init__(self, size):
-		VectorElement.__init__(self, size)
-		self.randomize()
+		VectorElement.__init__(self, size, 2*(np.random.rand(size) - 0.5))
+
+	def _gbias(self):
+		return self.state
+	def _sbias(self, bias):
+		self.state = bias
+	bias = property(_gbias, _sbias)
 
 	def step(self, vins):
 		return [vins[0] + self.bias]
 
 	def backstep(self, grad, state, eouts):
 		if grad is not None:
-			grad.bias += eouts[0]
+			grad.state += eouts[0]
 		return [eouts[0]]
-
-	def learn(self, grad, rate):
-		#	exp.abias += nbias**2
-		#	rate = rate/np.sqrt(exp.abias)
-		self.bias -= rate*grad.bias
-
-	def randomize(self):
-		self.bias = 2*np.random.rand(self.size) - 1
 
 
 class Uniform(VectorElement):
@@ -153,9 +120,6 @@ class Uniform(VectorElement):
 	def backstep(self, grad, state, eouts):
 		return [eouts[0]]
 
-	def learn(self, grad, rate):
-		pass
-
 
 class Tanh(VectorElement):
 	def __init__(self, size):
@@ -167,8 +131,6 @@ class Tanh(VectorElement):
 	def backstep(self, grad, state, eouts):
 		return [eouts[0]*(1/np.cosh(state.vins[0]))**2]
 
-	def learn(self, grad, rate):
-		pass
 
 class Rectifier(VectorElement):
 	def __init__(self, size):
@@ -181,8 +143,6 @@ class Rectifier(VectorElement):
 		e = np.exp(-state.vins[0])
 		return [eouts[0]/(1 + e)]
 
-	def learn(self, exp, rate):
-		pass
 
 class Mixer(Element):
 	def __init__(self, size, nins, nouts):
@@ -200,9 +160,6 @@ class Mixer(Element):
 		for i in range(len(eouts)):
 			accum += eouts[i]
 		return [accum]*self.nins
-
-	def learn(self, grad, rate):
-		pass
 
 
 class Fork(Mixer):
