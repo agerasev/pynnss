@@ -112,17 +112,18 @@ class Network(Node):
 				# node is not ready, check next node
 				continue
 
+			# check node has not activated yet
+			if info.activated[key] != 0:
+				# node already activated and has state
+				continue
+			info.activated[key] += 1
+
 			# extract inputs from pipes
 			vins = []
 			for i in range(node.nins):
 				pipe = state.pipes[self._blink[(key, i)]]
 				vins.append(pipe.data)
 				pipe.data = None
-
-			# check node has not activated yet
-			if info.activated[key] != 0:
-				raise Exception('Node ' + str(key) + ' activated twice')
-			info.activated[key] += 1
 
 			# propagate signal through node
 			vouts = node.transmit(state.nodes[key], vins)
@@ -188,17 +189,18 @@ class Network(Node):
 				# node is not ready, check next node
 				continue
 
+			# check node has not activated yet
+			if info.activated[key] != 0:
+				# node already activated and has error state
+				continue
+			info.activated[key] += 1
+
 			# extract ouput errors from pipes
 			eouts = []
 			for i in range(node.nouts):
 				pipe = error.pipes[self._flink[(key, i)]]
 				eouts.append(pipe.data)
 				pipe.data = None
-
-			# check node has not activated yet
-			if info.activated[key] != 0:
-				raise Exception('Node ' + str(key) + ' activated twice')
-			info.activated[key] += 1
 
 			# backpropagate error through node
 			node_grad = None
@@ -250,4 +252,4 @@ class Network(Node):
 	# learn network using gradient and learning rate
 	def learn(self, grad, rate):
 		for key in self.nodes:
-			self.nodes[key].learn(grad.nodes[key], rate)
+			self.nodes[key].learn(grad.nodes[key], rate.nodes[key])

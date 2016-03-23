@@ -14,7 +14,10 @@ class Node:
 			self.vouts = None
 
 		def __copy__(self):
-			return Node._State()
+			state = type(self)()
+			state.vins = self.vins
+			state.vouts = self.vouts
+			return state
 
 	def newState(self):
 		return self._State()
@@ -26,7 +29,10 @@ class Node:
 			self.eouts = None
 
 		def __copy__(self):
-			return Node._Error()
+			error = type(self)()
+			error.eins = self.eins
+			error.eouts = self.eouts
+			return error
 
 	def newError(self):
 		return self._Error()

@@ -16,7 +16,7 @@ class Element(Node):
 			self.state *= factor
 
 		def clip(self, value):
-			self.state = np.clip(self.state, -value, value)
+			np.clip(self.state, -value, value, out=self.state)
 
 	def newGradient(self):
 		if self.state is None:
@@ -47,7 +47,7 @@ class Element(Node):
 
 	def learn(self, grad, rate):
 		if grad is not None:
-			self.state -= rate*grad.state
+			self.state -= rate.value*grad.state
 
 class MatrixElement(Element):
 	def __init__(self, sin, sout, state=None):
@@ -64,7 +64,7 @@ class MatrixElement(Element):
 # MatrixProduct multiplies input vector by matrix
 class MatrixProduct(MatrixElement):
 	def __init__(self, sin, sout):
-		MatrixElement.__init__(self, sin, sout, 2*(np.random.rand(sin, sout) - 0.5))
+		MatrixElement.__init__(self, sin, sout, 0.01*np.random.randn(sin, sout))
 
 	def _gweight(self):
 		return self.state
@@ -93,7 +93,7 @@ class VectorElement(Element):
 
 class Bias(VectorElement):
 	def __init__(self, size):
-		VectorElement.__init__(self, size, 2*(np.random.rand(size) - 0.5))
+		VectorElement.__init__(self, size, np.zeros(size))
 
 	def _gbias(self):
 		return self.state
@@ -129,7 +129,7 @@ class Tanh(VectorElement):
 		return [np.tanh(vins[0])]
 
 	def backstep(self, grad, state, eouts):
-		return [eouts[0]*(1/np.cosh(state.vins[0]))**2]
+		return [eouts[0]*(1 - state.vouts[0]**2)]
 
 
 class Rectifier(VectorElement):
