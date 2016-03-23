@@ -3,6 +3,7 @@
 from pynn.node import Node
 from pynn.path import Pipe
 
+import numpy as np
 from copy import copy
 
 # Network is a Node that contains other Nodes connected with each other with Paths
@@ -27,7 +28,7 @@ class Network(Node):
 		for key in self.nodes:
 			state.nodes[key] = self.nodes[key].newState()
 		for i in range(len(self.paths)):
-			state.pipes.append(Pipe())
+			state.pipes.append(Pipe(self.paths[i].state))
 		return state
 
 	class _Error(Node._Error):
@@ -49,7 +50,10 @@ class Network(Node):
 		for key in self.nodes:
 			error.nodes[key] = self.nodes[key].newError()
 		for i in range(len(self.paths)):
-			error.pipes.append(Pipe())
+			data = None
+			if self.paths[i].state is not None:
+				data = np.zeros_like(self.paths[i].state)
+			error.pipes.append(Pipe(data))
 		return error
 
 	class _Gradient(Node._Gradient):
@@ -82,6 +86,10 @@ class Network(Node):
 		self.paths = []
 		self._flink = {}
 		self._blink = {}
+
+	def link(self, path):
+		self.paths.append(path)
+		self.update()
 
 	def update(self):
 		for i in range(len(self.paths)):
