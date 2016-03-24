@@ -1,11 +1,24 @@
 #!/usr/bin/python3
 
+from time import clock
+
 # Node is structural unit of network
 class Node:
 	# describes node sites
 	class Site:
 		def __init__(self, size):
 			self.size = size
+
+	class Profiler:
+		def __init__(self):
+			self.start = 0
+			self.time = 0
+
+		def __enter__(self):
+			self.start = clock()
+
+		def __exit__(self, a,b,c):
+			self.time += clock() - self.start
 
 	# stores state of node 
 	class _State:
@@ -55,6 +68,8 @@ class Node:
 	def __init__(self, nins, nouts):
 		self.ins = [None]*nins
 		self.outs = [None]*nouts
+		self.fprof = self.Profiler()
+		self.bprof = self.Profiler()
 
 	def _gnins(self):
 		return len(self.ins)
@@ -69,7 +84,8 @@ class Node:
 	# changes state
 	# returns outputs
 	def transmit(self, state, vins):
-		vouts = self._transmit(state, vins)
+		with self.fprof:
+			vouts = self._transmit(state, vins)
 		state.vins = vins
 		state.vouts = vouts
 		return vouts
@@ -81,7 +97,8 @@ class Node:
 	# modifies existing gradient and error state
 	# returns input error
 	def backprop(self, grad, error, state, eouts):
-		eins = self._backprop(grad, error, state, eouts)
+		with self.bprof:
+			eins = self._backprop(grad, error, state, eouts)
 		error.eins = eins
 		error.eouts = eouts
 		return eins
