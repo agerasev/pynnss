@@ -98,14 +98,25 @@ class Network(Node):
 			self._blink[p.dst] = i
 
 	class _PropInfo:
-		def __init__(self):
-			self.activated = {}
+		class NodeInfo:
+			def __init__(self):
+				self.acted = 0
+				self.check = 0
+		def __init__(self, keys):
+			self.nodes = {}
+			for key in keys:
+				self.nodes[key] = self.NodeInfo()
 
 	# step forward
 	def _step(self, state, info):
 		count = 0
-		for key in self.nodes:
+		for key in list(self.nodes.keys()):
 			node = self.nodes[key]
+
+			# check node has not activated yet
+			if info.nodes[key].acted != 0:
+				# node already activated and has state
+				continue
 
 			# check all node input pipes is ready
 			pipecount = 0
@@ -120,11 +131,7 @@ class Network(Node):
 				# node is not ready, check next node
 				continue
 
-			# check node has not activated yet
-			if info.activated[key] != 0:
-				# node already activated and has state
-				continue
-			info.activated[key] += 1
+			info.nodes[key].acted += 1
 
 			# extract inputs from pipes
 			vins = []
@@ -142,15 +149,14 @@ class Network(Node):
 				if pipe.data is not None:
 					raise Exception('Node ' + str(key) + ' output pipe is not empty')
 				pipe.data = vouts[i]
+
 			count += 1
 		return count
 
 	# forward propagation
 	def _transmit(self, state, vins):
 		# prepare propagation info
-		info = self._PropInfo()
-		for key in self.nodes:
-			info.activated[key] = 0
+		info = self._PropInfo(self.nodes.keys())
 
 		# put inputs in pipes
 		for i in range(self.nins):
@@ -175,14 +181,20 @@ class Network(Node):
 				raise Exception('Output pipe ' + str(pidx) + ' is empty')
 			vouts.append(pipe.data)
 			pipe.data = None
+
 		return vouts
 
 
 	# step back
 	def _backstep(self, grad, error, state, info):
 		count = 0
-		for key in self.nodes:
+		for key in reversed(list(self.nodes.keys())):
 			node = self.nodes[key]
+
+			# check node has not activated yet
+			if info.nodes[key].acted != 0:
+				# node already activated and has error state
+				continue
 
 			# check all node output pipes is ready
 			pipecount = 0
@@ -197,11 +209,7 @@ class Network(Node):
 				# node is not ready, check next node
 				continue
 
-			# check node has not activated yet
-			if info.activated[key] != 0:
-				# node already activated and has error state
-				continue
-			info.activated[key] += 1
+			info.nodes[key].acted += 1
 
 			# extract ouput errors from pipes
 			eouts = []
@@ -222,15 +230,14 @@ class Network(Node):
 				if pipe.data is not None:
 					raise Exception('Node ' + str(key) + ' input pipe is not empty')
 				pipe.data = eins[i]
+
 			count += 1
 		return count
 
 	# error backpropagation
 	def _backprop(self, grad, error, state, eouts):
 		# prepare propagation info
-		info = self._PropInfo()
-		for key in self.nodes:
-			info.activated[key] = 0
+		info = self._PropInfo(self.nodes.keys())
 
 		# put output errors in pipes
 		for i in range(self.nouts):
@@ -255,6 +262,7 @@ class Network(Node):
 				raise Exception('Input pipe ' + str(pidx) + ' is empty')
 			eins.append(pipe.data)
 			pipe.data = None
+
 		return eins
 
 	# learn network using gradient and learning rate
