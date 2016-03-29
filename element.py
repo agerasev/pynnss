@@ -167,6 +167,6 @@ class Fork(Mixer):
 		Mixer.__init__(self, size, 1, nouts)
 
 
-class Merger(Mixer):
+class Join(Mixer):
 	def __init__(self, size, nins):
 		Mixer.__init__(self, size, nins, 1)

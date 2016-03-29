@@ -84,6 +84,9 @@ class Node:
 	# changes state
 	# returns outputs
 	def transmit(self, state, vins):
+		if len(vins) != self.nins:
+			raise Exception('wrong inputs number')
+
 		with self.fprof:
 			vouts = self._transmit(state, vins)
 		state.vins = vins
@@ -97,6 +100,8 @@ class Node:
 	# modifies existing gradient and error state
 	# returns input error
 	def backprop(self, grad, error, state, eouts):
+		if len(eouts) != self.nouts:
+			raise Exception('wrong inputs number')
 		with self.bprof:
 			eins = self._backprop(grad, error, state, eouts)
 		error.eins = eins
