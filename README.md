@@ -16,9 +16,11 @@ There are some types of nodes:
     + `Join`
 
 ## TODO
-- [x] Separate structure and state model
 - [x] AdaGrad
+- [ ] Complex numbers support
 - [ ] Loss layers
+- [ ] Reductors
 - [ ] Pre-defined common networks
+- [ ] Separate structure and state
 - [ ] Multithreading
 - [ ] GPU Acceleration
