@@ -2,18 +2,36 @@
 
 Simple Python3 Recurrent Neural Networks framework.
 
-## Structure and State
-In the PyNN structure and state are divided. Structure described by `Nodes`, `Paths` and `Networks`. State is represented by `_State` for forward propagation, `_Error` for backward error propagation, and `_Gradient` for storing computed gradient.
+## Model
+In PyNN structure and state of network are divided. This allows multiple states for single network, that also helpful for parallel learning.
 
-## Nodes
-There are some types of nodes:
-+ `MatrixProduct`
-+ `Bias`
-+ `Tanh`
-+ `Rectifier`
+### Structure
+The fundamental unit of PyNN network structure is [Node](#Node). 
+There are some common operations implementations for Nodes, so-called [Elements](#Element). 
+Nodes can be connected with each other and encapsulated in [Network](#Network) which is also Node.
+
+### State
+Learned state of network like biases and matrix weights is represented by [_State](#_State). 
+Data that need to be saved through forward propagation, e.g. data in loopbacks or Nodes inputs/outputs, is stored in [_Memory](#_Memory). 
+Errors for backpropagation are stored in [_Error](#_Error).
+Gradient of variables of network, encapsulated in _State, is represented by [_Gradient](#_Gradient).
+[_Context](#_Context) contains all these states and also some temporary buffers needed for data propagation.
+
+## `Element`
+
+There are predefined types of element:
+
++ `MatrixElement`
+    + `Matrix`
++ `VectorElement`
+    + `Bias`
+    + `Tanh`
+    + `Rectifier`
 + `Mixer`
     + `Fork`
     + `Join`
+
+You can define your own.
 
 ## TODO
 - [x] Separate structure and state model
