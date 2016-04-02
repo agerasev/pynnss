@@ -1,11 +1,6 @@
 #!/usr/bin/python3
 
-from dutil import dcopyto
-
-if __name__ != '__main__':
-	from pynn import prof
-else:
-	import prof
+from time import clock
 
 
 # Node is structural unit of network
@@ -16,14 +11,16 @@ class Node:
 			self.size = size
 			self.dtype = dtype
 
-		def _count(site):
-			if isinstance(site, Node.Site):
-				return 1
-			else:
-				for s in site:
-					if not isinstance(s, Node.Site):
-						raise Exception('arg is not site or sequence of sites')
-				return len(site)
+	class Profiler:
+		def __init__(self):
+			self.start = 0
+			self.time = 0
+
+		def __enter__(self):
+			self.start = clock()
+
+		def __exit__(self, *args):
+			self.time += clock() - self.start
 
 	# stores node state like biases or matrix weights
 	class _State:
@@ -55,79 +52,70 @@ class Node:
 
 	# stores node memory e.g. inputs, outputs and data in loopbacks
 	class _Memory:
-		def __init__(self, din=None, dout=None):
-			self.din = din
-			self.dout = dout
+		def __init__(self):
+			pass
 
 		def copyto(self, out):
-			dcopyto(out.din, self.din)
-			dcopyto(out.dout, self.dout)
+			pass
 
 	def newMemory(self):
 		return None
 
 	# stores node errors
 	class _Error:
-		def __init__(self, ein=None, eout=None):
-			self.ein = ein
-			self.eout = eout
+		def __init__(self):
+			pass
 
 		def copyto(self, out):
-			dcopyto(out.ein, self.ein)
-			dcopyto(out.eout, self.eout)
+			pass
 
 	def newError(self):
 		return None
 
 	# context for evaluation
 	class Context:
-		def __init__(self, din, dout, **kwargs):
-			self.din = din
-			self.dout = dout
+		def __init__(self, src, dst, **kwargs):
+			self.src = src
+			self.dst = dst
 			self.state = kwargs.get('state')
 			self.mem = kwargs.get('mem')
 
 	class ContextLearn(Context):
-		def __init__(self, din, dout, ein, eout, **kwargs):
-			self.Context.__init__(self, din, dout, **kwargs)
-			self.ein = ein
-			self.eout = eout
+		def __init__(self, src, dst, **kwargs):
+			self.Context.__init__(self, src, dst, **kwargs)
 			self.grad = kwargs.get('grad')
 			self.err = kwargs.get('err')
 			self.rate = kwargs.get('rate')
 
 	def __init__(self, isite, osite, **kwargs):
-		# check and set in/out info
 		self.isite = isite
-		self.nin = Node.Site._count(isite)
+		self.nin = len(isite)
 		self.osite = osite
-		self.nout = Node.Site._count(osite)
+		self.nout = len(osite)
 
 		if kwargs.get('prof', False):
-			self.fstat = prof.Time()
-			self.bstat = prof.Time()
+			self.fstat = self.Profiler()
+			self.bstat = self.Profiler()
 		else:
-			self.fstat = prof.Empty()
-			self.bstat = prof.Empty()
+			self.fstat = None
+			self.bstat = None
 
 	def transmit(self, ctx):
-		with self.fstat:
+		if self.fstat is not None:
+			with self.fstat:
+				self._transmit(ctx)
+		else:
 			self._transmit(ctx)
-		mem = ctx.mem
-		if mem is not None:
-			dcopyto(mem.din, ctx.din)
-			dcopyto(mem.dout, ctx.dout)
 
 	def _transmit(self, ctx):
 		raise NotImplementedError()
 
 	def backprop(self, ctx):
-		with self.bstat:
+		if self.bstat is not None:
+			with self.bstat:
+				self._backprop(ctx)
+		else:
 			self._backprop(ctx)
-		err = ctx.err
-		if err is not None:
-			dcopyto(err.ein, ctx.ein)
-			dcopyto(err.eout, ctx.eout)
 
 	def _backprop(self, ctx):
 		raise NotImplementedError()

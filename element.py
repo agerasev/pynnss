@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 
 import numpy as np
-from dutil import dcopyto
+import array
+from array import Array
 
 if __name__ != '__main__':
 	from pynn.node import Node
@@ -17,7 +18,7 @@ class Element(Node):
 			self.data = data
 
 		def copyto(self, out):
-			dcopyto(out.data, self.data)
+			array.copyto(out.data, self.data)
 
 		class _Gradient(Node._State._Gradient):
 			def __init__(self, data=None):
