@@ -1,115 +1,133 @@
 #!/usr/bin/python3
 
-from time import clock
+from dutil import dcopyto
+
+if __name__ != '__main__':
+	from pynn import prof
+else:
+	import prof
+
 
 # Node is structural unit of network
 class Node:
 	# describes node sites
 	class Site:
-		def __init__(self, size):
+		def __init__(self, size, dtype=float):
 			self.size = size
+			self.dtype = dtype
 
-	class Profiler:
-		def __init__(self):
-			self.start = 0
-			self.time = 0
+		def _count(site):
+			if isinstance(site, Node.Site):
+				return 1
+			else:
+				for s in site:
+					if not isinstance(s, Node.Site):
+						raise Exception('arg is not site or sequence of sites')
+				return len(site)
 
-		def __enter__(self):
-			self.start = clock()
-
-		def __exit__(self, a,b,c):
-			self.time += clock() - self.start
-
-	# stores state of node 
+	# stores node state like biases or matrix weights
 	class _State:
-		def __init__(self):
-			self.vins = None
-			self.vouts = None
-
-		def __copy__(self):
-			state = type(self)()
-			state.vins = self.vins
-			state.vouts = self.vouts
-			return state
-
-	def newState(self):
-		return self._State()
-
-	# stores node errors
-	class _Error:
-		def __init__(self):
-			self.eins = None
-			self.eouts = None
-
-		def __copy__(self):
-			error = type(self)()
-			error.eins = self.eins
-			error.eouts = self.eouts
-			return error
-
-	def newError(self):
-		return self._Error()
-
-	# stores learn results
-	class _Gradient:
 		def __init__(self):
 			pass
 
-		def mul(self, factor):
-			raise NotImplementedError()
-			
-		def clip(self, value):
+		def copyto(self, out):
 			raise NotImplementedError()
 
-	def newGradient(self):
-		return self._Gradient()
+		# stores learn results
+		class _Gradient:
+			def __init__(self):
+				pass
 
+			def mul(self, factor):
+				raise NotImplementedError()
 
-	def __init__(self, nins, nouts):
-		self.ins = [None]*nins
-		self.outs = [None]*nouts
-		self.fprof = self.Profiler()
-		self.bprof = self.Profiler()
+			def clip(self, value):
+				raise NotImplementedError()
 
-	def _gnins(self):
-		return len(self.ins)
-	nins = property(_gnins)
+		def newGradient(self):
+			return None
 
-	def _gnouts(self):
-		return len(self.outs)
-	nouts = property(_gnouts)
+		def learn(self, grad, rate):
+			raise NotImplementedError()
 
+	def newState(self):
+		return None
 
-	# takes state and inputs
-	# changes state
-	# returns outputs
-	def transmit(self, state, vins):
-		if len(vins) != self.nins:
-			raise Exception('wrong inputs number')
+	# stores node memory e.g. inputs, outputs and data in loopbacks
+	class _Memory:
+		def __init__(self, din=None, dout=None):
+			self.din = din
+			self.dout = dout
 
-		with self.fprof:
-			vouts = self._transmit(state, vins)
-		state.vins = vins
-		state.vouts = vouts
-		return vouts
+		def copyto(self, out):
+			dcopyto(out.din, self.din)
+			dcopyto(out.dout, self.dout)
 
-	def _transmit(self, state, vins):
+	def newMemory(self):
+		return None
+
+	# stores node errors
+	class _Error:
+		def __init__(self, ein=None, eout=None):
+			self.ein = ein
+			self.eout = eout
+
+		def copyto(self, out):
+			dcopyto(out.ein, self.ein)
+			dcopyto(out.eout, self.eout)
+
+	def newError(self):
+		return None
+
+	# context for evaluation
+	class Context:
+		def __init__(self, din, dout, **kwargs):
+			self.din = din
+			self.dout = dout
+			self.state = kwargs.get('state')
+			self.mem = kwargs.get('mem')
+
+	class ContextLearn(Context):
+		def __init__(self, din, dout, ein, eout, **kwargs):
+			self.Context.__init__(self, din, dout, **kwargs)
+			self.ein = ein
+			self.eout = eout
+			self.grad = kwargs.get('grad')
+			self.err = kwargs.get('err')
+			self.rate = kwargs.get('rate')
+
+	def __init__(self, isite, osite, **kwargs):
+		# check and set in/out info
+		self.isite = isite
+		self.nin = Node.Site._count(isite)
+		self.osite = osite
+		self.nout = Node.Site._count(osite)
+
+		if kwargs.get('prof', False):
+			self.fstat = prof.Time()
+			self.bstat = prof.Time()
+		else:
+			self.fstat = prof.Empty()
+			self.bstat = prof.Empty()
+
+	def transmit(self, ctx):
+		with self.fstat:
+			self._transmit(ctx)
+		mem = ctx.mem
+		if mem is not None:
+			dcopyto(mem.din, ctx.din)
+			dcopyto(mem.dout, ctx.dout)
+
+	def _transmit(self, ctx):
 		raise NotImplementedError()
 
-	# takes state, error state, gradient and output error
-	# modifies existing gradient and error state
-	# returns input error
-	def backprop(self, grad, error, state, eouts):
-		if len(eouts) != self.nouts:
-			raise Exception('wrong inputs number')
-		with self.bprof:
-			eins = self._backprop(grad, error, state, eouts)
-		error.eins = eins
-		error.eouts = eouts
-		return eins
+	def backprop(self, ctx):
+		with self.bstat:
+			self._backprop(ctx)
+		err = ctx.err
+		if err is not None:
+			dcopyto(err.ein, ctx.ein)
+			dcopyto(err.eout, ctx.eout)
 
-	def _backprop(self, grad, error, state, eouts):
-		raise NotImplementedError()
-
-	def learn(self, grad, rate):
+	def _backprop(self, ctx):
 		raise NotImplementedError()

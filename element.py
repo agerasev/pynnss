@@ -1,83 +1,88 @@
 #!/usr/bin/python3
 
-from pynn.node import Node
-
 import numpy as np
+from dutil import dcopyto
 
-# Element is basic, zero-state node
+if __name__ != '__main__':
+	from pynn.node import Node
+else:
+	from node import Node
 
+
+# Element is a basic node
 class Element(Node):
-	class _Gradient(Node._Gradient):
-		def __init__(self, state):
-			Node._Gradient.__init__(self)
-			self.state = np.zeros_like(state)
+	class _State(Node._State):
+		def __init__(self, data=None):
+			Node._State.__init__(self)
+			self.data = data
 
-		def mul(self, factor):
-			self.state *= factor
+		def copyto(self, out):
+			dcopyto(out.data, self.data)
 
-		def clip(self, value):
-			np.clip(self.state, -value, value, out=self.state)
+		class _Gradient(Node._State._Gradient):
+			def __init__(self, data=None):
+				Node._Gradient.__init__(self)
+				self.data = data
 
-	def newGradient(self):
-		if self.state is None:
+			def mul(self, factor):
+				self.data *= factor
+
+			def clip(self, value):
+				np.clip(self.data, -value, value, out=self.data)
+
+		def newGradient(self):
+			if self.data is not None:
+				return self._Gradient(self, np.zeros_like(self.data))
 			return None
-		return self._Gradient(self.state)
 
-	def __init__(self, sins, souts, state=None):
-		nins = len(sins)
-		nouts = len(souts)
-		Node.__init__(self, nins, nouts)
-		for j in range(nins):
-			self.ins[j] = Node.Site(sins[j])
-		for j in range(nouts):
-			self.outs[j] = Node.Site(souts[j])
-		self.state = state
+		def learn(self, grad, rate):
+			if grad is not None:
+				self.data -= rate.data*grad.data
 
-	def step(self, vins):
+	def newState(self):
+		return None
+
+	def __init__(self, isite, osite, **kwargs):
+		Node.__init__(self, isite, osite, **kwargs)
+
+	def _transmit(self, ctx):
 		raise NotImplementedError()
 
-	def _transmit(self, state, vins):
-		return self.step(vins)
-
-	def backstep(self, grad, state, eouts):
+	def _backprop(self, ctx):
 		raise NotImplementedError()
 
-	def _backprop(self, grad, error, state, eouts):
-		return self.backstep(grad, state, eouts)
-
-	def learn(self, grad, rate):
-		if grad is not None:
-			self.state -= rate.value*grad.state
 
 class MatrixElement(Element):
-	def __init__(self, sin, sout, state=None):
-		Element.__init__(self, [sin], [sout], state)
+	def __init__(self, sin, sout, **kwargs):
+		Element.__init__(self, self.Site(sin), self.Site(sout), **kwargs)
 
 	def _gsin(self):
-		return self.ins[0].size
+		return self.isite.size
 	sin = property(_gsin)
 
 	def _gsout(self):
-		return self.outs[0].size
+		return self.osite.size
 	sout = property(_gsout)
 
+
 # MatrixProduct multiplies input vector by matrix
-class MatrixProduct(MatrixElement):
-	def __init__(self, sin, sout):
-		MatrixElement.__init__(self, sin, sout, 0.01*np.random.randn(sin, sout))
+class Matrix(MatrixElement):
+	def __init__(self, sin, sout, **kwargs):
+		MatrixElement.__init__(self, sin, sout, **kwargs)
+
+	def newState(self):
+		return self._State(0.01*np.random.randn(self.sin, self.sout))
 
 	def _gweight(self):
-		return self.state
-	def _sweight(self, weight):
-		self.state = weight
-	weight = property(_gweight, _sweight)
+		return self.data
+	weight = property(_gweight)
 
-	def step(self, vins):
-		return [np.dot(vins[0], self.weight)]
+	def _transmit(self, ctx):
+		np.dot(ctx.din, self.weight, out=ctx.dout)
 
-	def backstep(self, grad, state, eouts):
-		if grad is not None:
-			grad.state += np.outer(state.vins[0], eouts[0])
+	def _backprop(self, ctx):
+		if ctx.grad is not None:
+			ctx.grad.data += np.outer(state.vins[0], eouts[0])
 		eins = [np.dot(self.weight, eouts[0])]
 		return eins
 
