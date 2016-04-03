@@ -1,7 +1,10 @@
 #!/usr/bin/python3
 
 import numpy as np
-import array
+if __name__ == '__main__':
+	import array
+else:
+	import pynn.array as array
 from array import Array
 
 if __name__ != '__main__':
