@@ -4,35 +4,35 @@ import numpy as np
 
 
 class Array:
-	def __init__(self, arg, dtype=float, gpu=False):
+	def __init__(self, arg, dtype=None, gpu=False):
 		self.gpu = gpu
-		self.dtype = dtype
 
-		if gpu:
-			pass
+		if type(arg) == Array:
+			if dtype is None:
+				dtype = arg.dtype
+			self.data = np.array(arg.data, dtype=dtype)
+		elif type(arg) == np.ndarray:
+			if dtype is None:
+				dtype = arg.dtype
+			self.data = np.array(arg, dtype=dtype)
+		elif type(arg) == tuple or type(arg) == int:
+			if dtype is None:
+				dtype = float
+			self.data = np.empty(arg, dtype=dtype)
 		else:
-			if type(arg) == np.ndarray:
-				self.data = arg
-			elif type(arg) == tuple or type(arg) == int:
-				self.data = np.zeros(arg, dtype=dtype)
-			else:
-				raise Exception('wrong argument')
-			self.size = self.data.shape
+			raise Exception('wrong argument: %s' % type(arg).__name__)
+
+		self.dtype = dtype
+		self.shape = self.data.shape
 
 
 # apply func for arrays or sequences of arrays
-def _unwrap(func, *args, opt=(), ret=False):
+def _unwrap(func, *args, opt=()):
 	if isinstance(args[0], Array):
-		return func(*args, *opt)
+		func(*args, *opt)
 	else:
-		if ret:
-			lst = []
-			for a in zip(*args):
-				lst.append(func(*a, *opt))
-			return tuple(lst)
-		else:
-			for a in zip(*args):
-				func(*a, *opt)
+		for a in zip(*args):
+			func(*a, *opt)
 
 
 # copy one array to another
@@ -44,15 +44,13 @@ def copyto(dst, src):
 	_unwrap(_copyto, dst, src)
 
 
-# create new array and copy to it
-def _copy(arr):
-	ret = Array(arr.size)
-	_copyto(ret, arr)
-	return ret
+# add two arrays and write to dst
+def _add(dst, one, two):
+	np.add(one.data, two.data, out=dst.data)
 
 
-def copy(arr):
-	return _unwrap(_copy, arr, ret=True)
+def add(dst, one, two):
+	_unwrap(_add, dst, one, two)
 
 
 # add one array to another
@@ -85,12 +83,12 @@ if __name__ == '__main__':
 	assert(b[0].data[0] == 1)
 	print('ok')
 
-	print('copy ... ', end='')
-	a = Array(4), Array(2)
-	a[0].data[3] = 3
-	a[1].data[1] = 1
-	b = copy(a)
-	assert(b[0].data[3] == 3 and b[1].data[1] == 1)
+	print('add ... ', end='')
+	a, b, c = Array(4), Array(4), Array(4)
+	a.data[0] = 1
+	b.data[0] = 2
+	add(c, b, a)
+	assert(c.data[0] == 3)
 	print('ok')
 
 	print('addto ... ', end='')
