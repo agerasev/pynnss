@@ -73,25 +73,26 @@ class Node:
 		return None
 
 	# context for evaluation
-	class Context:
+	class _Context:
 		def __init__(self, src, dst, **kwargs):
 			self.src = src
 			self.dst = dst
 			self.state = kwargs.get('state')
 			self.mem = kwargs.get('mem')
 
-	class ContextLearn(Context):
-		def __init__(self, src, dst, **kwargs):
-			self.Context.__init__(self, src, dst, **kwargs)
-			self.grad = kwargs.get('grad')
-			self.err = kwargs.get('err')
-			self.rate = kwargs.get('rate')
+			if kwargs.get('learn', True):
+				self.grad = kwargs.get('grad')
+				self.err = kwargs.get('err')
+				self.rate = kwargs.get('rate')
 
-	def __init__(self, isite, osite, **kwargs):
-		self.isite = isite
-		self.nin = len(isite)
-		self.osite = osite
-		self.nout = len(osite)
+	def newContext(self, *args, **kwargs):
+		return self._Context(*args, **kwargs)
+
+	def __init__(self, isites, osites, **kwargs):
+		self.isites = isites
+		self.inum = len(isites)
+		self.osites = osites
+		self.onum = len(osites)
 
 		if kwargs.get('prof', False):
 			self.fstat = self.Profiler()

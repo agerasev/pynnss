@@ -26,76 +26,51 @@ class Array:
 		self.shape = self.data.shape
 
 
-# apply func for arrays or sequences of arrays
-def _unwrap(func, *args, opt=()):
-	if isinstance(args[0], Array):
-		func(*args, *opt)
-	else:
-		for a in zip(*args):
-			func(*a, *opt)
-
-
-# copy one array to another
-def _copyto(dst, src):
+def copy(dst, src):
 	np.copyto(dst.data, src.data)
 
 
-def copyto(dst, src):
-	_unwrap(_copyto, dst, src)
-
-
-# add two arrays and write to dst
-def _add(dst, one, two):
+def add(dst, one, two):
 	np.add(one.data, two.data, out=dst.data)
 
 
-def add(dst, one, two):
-	_unwrap(_add, dst, one, two)
+def radd(dst, arr):
+	dst.data += arr.data
 
 
-# add one array to another
-def _addto(dst, src):
-	dst.data += src.data
+def clip(dst, src, lv, rv):
+	np.clip(src.data, lv, rv, out=dst.data)
 
 
-def addto(dst, src):
-	_unwrap(_addto, dst, src)
+def rclip(dst, lv, rv):
+	np.clip(dst.data, lv, rv, out=dst.data)
 
 
-# clip array
-def _clip(arr, lv, rv):
-	np.clip(arr.data, lv, rv, out=arr.data)
+def muls(dst, src, scal):
+	np.mul(src.data, scal, out=dst.data)
 
 
-def clip(arr, lv, rv):
-	_unwrap(_clip, arr, opt=(lv, rv))
+def mul(dst, one, two):
+	np.mul(one.data, two.data, out=dst.data)
 
-# unit test
-if __name__ == '__main__':
-	print('unit test:')
 
-	print('copyto ... ', end='')
-	a = Array(4),
-	a[0].data[0] = 1
-	b = Array(4),
-	copyto(b, a)
-	a[0].data[0] = 2
-	assert(b[0].data[0] == 1)
-	print('ok')
+def rmuls(dst, scal):
+	dst.data *= scal
 
-	print('add ... ', end='')
-	a, b, c = Array(4), Array(4), Array(4)
-	a.data[0] = 1
-	b.data[0] = 2
-	add(c, b, a)
-	assert(c.data[0] == 3)
-	print('ok')
 
-	print('addto ... ', end='')
-	a = Array(4),
-	a[0].data[0] = 1
-	b = Array(4),
-	b[0].data[0] = 2
-	addto(b, a)
-	assert(b[0].data[0] == 3)
-	print('ok')
+def rmul(dst, arr):
+	np.mul(dst.data, arr.data, out=dst.data)
+
+
+def tanh(dst, src):
+	np.tanh(src, out=dst)
+
+
+def _f_bptanh(err, out):
+	return err*(1 - out**2)
+
+_vf_bptanh = np.vectorize(_f_bptanh)
+
+
+def bptanh(dst, err, out):
+	np.copyto(dst, _vf_bptanh(err, out))
