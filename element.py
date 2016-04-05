@@ -32,25 +32,34 @@ class Element(Node):
 				return self._Gradient(Array(np.zeros(self.data.shape)))
 			return None
 
-		class _Rate(Node._State._Rate):
-			def __init__(self, data):
+		class _RateConst(Node._State._Rate):
+			def __init__(self, factor):
 				Node._State._Rate.__init__(self)
+				self.factor = factor
+
+			def apply(self, dst, src):
+				array.rsubmul(dst, src, self.factor)
+
+		class _RateAdaGrad(_RateConst):
+			def __init__(self, factor, data):
+				Element._State._RateConst.__init__(self, factor)
 				self.data = data
 
-		def newRate(self, *args, **kwargs):
-			data = None
-			adagrad = kwargs.get('adagrad', False)
-			if adagrad == (len(args) > 0):
-				raise Exception('need to set rate or use adagrad')
-			if adagrad:
-				data = np.zeros(self.data.shape) + 1e-6
+			def update(self, src):
+				array.radd_adagrad(self.data, src)
+
+			def apply(self, dst, src):
+				array.rsub_adagrad(dst, src, self.factor, self.data)
+
+		def newRate(self, factor, **kwargs):
+			if kwargs.get('adagrad', False):
+				return self._RateAdaGrad(factor, Array(np.zeros(self.data.shape) + 1e-6))
 			else:
-				data = args[0]
-			return self._Rate(data)
+				return self._RateConst(factor)
 
 		def learn(self, grad, rate):
 			if grad is not None:
-				array.rsubmul(self.data, grad.data, rate.data)
+				rate.apply(self.data, grad.data)
 
 	def newState(self):
 		return None

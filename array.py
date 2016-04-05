@@ -75,7 +75,10 @@ def raddouter(dst, one, two):
 
 
 def rsubmul(dst, one, two):
-	dst.np -= one.np*two
+	if isinstance(two, Array):
+		dst.np -= one.np*two.np
+	else:
+		dst.np -= one.np*two
 
 
 def tanh(dst, src):
@@ -90,3 +93,17 @@ _vf_bptanh = np.vectorize(_f_bptanh)
 
 def bptanh(dst, err, out):
 	np.copyto(dst.np, _vf_bptanh(err.np, out.np))
+
+
+def radd_adagrad(dst, grad):
+	dst.np += grad.np**2
+
+
+def _f_adagrad(grad, accum, factor):
+	return grad*factor/np.sqrt(accum)
+
+_vf_adagrad = np.vectorize(_f_adagrad)
+
+
+def rsub_adagrad(dst, grad, factor, rate):
+	dst.np -= _vf_adagrad(grad.np, rate.np, factor)
