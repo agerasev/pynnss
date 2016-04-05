@@ -44,6 +44,14 @@ class Node:
 		def newGradient(self):
 			return None
 
+		# learning rate
+		class _Rate:
+			def __init__(self):
+				pass
+
+		def newRate(self):
+			return self._Rate()
+
 		def learn(self, grad, rate):
 			raise NotImplementedError()
 

@@ -2,7 +2,7 @@
 
 import numpy as np
 import pynn.array as array
-from array import Array
+from pynn.array import Array
 from pynn.element import Element
 
 

@@ -10,60 +10,76 @@ class Array:
 		if type(arg) == Array:
 			if dtype is None:
 				dtype = arg.dtype
-			self.data = np.array(arg.data, dtype=dtype)
+			self.np = np.array(arg.np, dtype=dtype)
 		elif type(arg) == np.ndarray:
 			if dtype is None:
 				dtype = arg.dtype
-			self.data = np.array(arg, dtype=dtype)
+			self.np = np.array(arg, dtype=dtype)
 		elif type(arg) == tuple or type(arg) == int:
 			if dtype is None:
 				dtype = float
-			self.data = np.empty(arg, dtype=dtype)
+			self.np = np.empty(arg, dtype=dtype)
 		else:
 			raise Exception('wrong argument: %s' % type(arg).__name__)
 
 		self.dtype = dtype
-		self.shape = self.data.shape
+		self.shape = self.np.shape
+
+	def get(self):
+		return np.copy(self.np)
+
+	def set(self, data):
+		np.copyto(self.np, data)
 
 
 def copy(dst, src):
-	np.copyto(dst.data, src.data)
+	np.copyto(dst.np, src.np)
 
 
 def add(dst, one, two):
-	np.add(one.data, two.data, out=dst.data)
+	np.add(one.np, two.np, out=dst.np)
 
 
 def radd(dst, arr):
-	dst.data += arr.data
+	dst.np += arr.np
 
 
 def clip(dst, src, lv, rv):
-	np.clip(src.data, lv, rv, out=dst.data)
+	np.clip(src.np, lv, rv, out=dst.np)
 
 
 def rclip(dst, lv, rv):
-	np.clip(dst.data, lv, rv, out=dst.data)
-
-
-def muls(dst, src, scal):
-	np.mul(src.data, scal, out=dst.data)
+	np.clip(dst.np, lv, rv, out=dst.np)
 
 
 def mul(dst, one, two):
-	np.mul(one.data, two.data, out=dst.data)
+	if isinstance(two, Array):
+		np.mul(one.np, two.np, out=dst.np)
+	else:
+		np.mul(one.np, two, out=dst.np)
 
 
-def rmuls(dst, scal):
-	dst.data *= scal
+def rmul(dst, src):
+	if isinstance(src, Array):
+		dst.np *= src.np
+	else:
+		dst.np *= src
 
 
-def rmul(dst, arr):
-	np.mul(dst.data, arr.data, out=dst.data)
+def dot(dst, one, two):
+	np.dot(one.np, two.np, out=dst.np)
+
+
+def raddouter(dst, one, two):
+	dst.np += np.outer(one.np, two.np)
+
+
+def rsubmul(dst, one, two):
+	dst.np -= one.np*two
 
 
 def tanh(dst, src):
-	np.tanh(src, out=dst)
+	np.tanh(src.np, out=dst.np)
 
 
 def _f_bptanh(err, out):
@@ -73,4 +89,4 @@ _vf_bptanh = np.vectorize(_f_bptanh)
 
 
 def bptanh(dst, err, out):
-	np.copyto(dst, _vf_bptanh(err, out))
+	np.copyto(dst.np, _vf_bptanh(err.np, out.np))

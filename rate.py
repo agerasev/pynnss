@@ -1,26 +1,27 @@
 #!/usr/bin/python3
 
+import numpy as np
 from pynn.network import Network
 from pynn.element import Element
 
-import numpy as np
 
 class Rate:
 	def __init__(self, node, value):
 		self.isnet = False
-		
+
 		if isinstance(node, Network):
 			self.isnet = True
 			net = node
 			self.nodes = {}
 			for key, node in net.nodes.items():
 				rate = None
-				if type(node) != Element or node.state is not None: 
+				if type(node) != Element or node.state is not None:
 					rate = type(self)(node, value)
 				self.nodes[key] = rate
 
 		if isinstance(node, Element):
 			self.value = value
+
 
 class RateAdaGrad(Rate):
 	def __init__(self, node, value):

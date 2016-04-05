@@ -2,7 +2,7 @@
 
 import numpy as np
 import pynn.array as array
-from array import Array
+from pynn.array import Array
 from pynn.element import Element
 
 
@@ -19,7 +19,7 @@ class Matrix(MatrixElement):
 
 	class _State(Element._State):
 		def __init__(self, isize, osize):
-			arr = Array(0.01*np.random.randn(self.isize, self.osize))
+			arr = Array(0.01*np.random.randn(osize, isize))
 			Element._State.__init__(self, arr)
 
 	def newState(self):
@@ -35,9 +35,9 @@ class Matrix(MatrixElement):
 
 	def _transmit(self, ctx):
 		array.copy(ctx.mem.idata, ctx.src)
-		array.dotmv(ctx.dst, ctx.state.data, ctx.src)
+		array.dot(ctx.dst, ctx.state.data, ctx.src)
 
 	def _backprop(self, ctx):
 		if ctx.grad is not None:
-			array.raddouter(ctx.grad.data, ctx.mem.idata, ctx.dst)
-		array.dotvm(ctx.src, ctx.dst, self.state.data)
+			array.raddouter(ctx.grad.data, ctx.dst, ctx.mem.idata)
+		array.dot(ctx.src, ctx.dst, ctx.state.data)
