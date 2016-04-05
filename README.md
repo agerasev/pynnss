@@ -34,9 +34,11 @@ There are predefined types of element:
 You can define your own.
 
 ## TODO
-- [x] Separate structure and state model
 - [x] AdaGrad
+- [ ] Complex numbers support
 - [ ] Loss layers
+- [ ] Reductors
 - [ ] Pre-defined common networks
+- [ ] Separate structure and state
 - [ ] Multithreading
 - [ ] GPU Acceleration
