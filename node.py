@@ -101,7 +101,7 @@ class Node:
 	# returns input error
 	def backprop(self, grad, error, state, eouts):
 		if len(eouts) != self.nouts:
-			raise Exception('wrong inputs number')
+			raise Exception('wrong error outputs number')
 		with self.bprof:
 			eins = self._backprop(grad, error, state, eouts)
 		error.eins = eins

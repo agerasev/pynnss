@@ -155,6 +155,17 @@ class Tanh(VectorElement):
 		return [eouts[0]*(1 - state.vouts[0]**2)]
 
 
+class Softmax(VectorElement):
+	def __init__(self, size, **kwargs):
+		VectorElement.__init__(self, size, **kwargs)
+
+	def step(self, vins):
+		evin = np.exp(vins[0])
+		return [evin/np.sum(evin)]
+
+	def backstep(self, grad, state, eouts):
+		raise NotImplementedError()
+
 class Rectifier(VectorElement):
 	def __init__(self, size, **kwargs):
 		VectorElement.__init__(self, size, **kwargs)
