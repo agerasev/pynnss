@@ -3,18 +3,19 @@
 from time import clock
 
 
-class Site:
-	def __init__(self, size):
-		self.size = size
+class NodeInfo:
+	def __init__(self, isizes, osizes):
+		if type(isizes) is int:
+			isizes = [isizes]
+		self.isizes = isizes
+		self.inum = len(isizes)
+		if type(osizes) is int:
+			osizes = [osizes]
+		self.osizes = osizes
+		self.onum = len(osizes)
 
-	def __eq__(self, other):
-		return self.size == other.size
 
-	def __ne__(self, other):
-		return not (self == other)
-
-
-class Node:
+class Node(NodeInfo):
 	class Profiler:
 		def __init__(self):
 			self.start = 0
@@ -93,27 +94,42 @@ class Node:
 		return None
 
 	class _Context:
-		def __init__(self, src, dst, **kwargs):
-			self.src = src
-			self.dst = dst
+		def _gsrc(self):
+			return self.srcs[0]
 
-			self.state = kwargs.get('state')
-			self.trace = kwargs.get('trace')
+		def _ssrc(self, data):
+			self.srcs[0] = data
 
-			self.mem = kwargs.get('mem')
-			self.err = kwargs.get('err')
+		src = property(_gsrc, _ssrc)
 
-			self.grad = kwargs.get('grad')
-			self.rate = kwargs.get('rate')
+		def _gdst(self):
+			return self.dsts[0]
 
-	def newContext(self, factory, *args, **kwargs):
-		return self._Context(*args, **kwargs)
+		def _sdst(self, data):
+			self.dsts[0] = data
 
-	def __init__(self, isites, osites, **kwargs):
-		self.isites = isites
-		self.inum = len(isites)
-		self.osites = osites
-		self.onum = len(osites)
+		dst = property(_gdst, _sdst)
+
+		def __init__(self, node):
+			self.node = node
+
+			self.state = None
+			self.trace = None
+
+			self.mem = None
+			self.err = None
+
+			self.grad = None
+			self.rate = None
+
+	def newContext(self, factory):
+		ctx = self._Context(self)
+		ctx.srcs = [None]*self.inum
+		ctx.dsts = [None]*self.onum
+		return ctx
+
+	def __init__(self, isizes, osizes, **kwargs):
+		NodeInfo.__init__(self, isizes, osizes)
 
 		if kwargs.get('prof', False):
 			self.fstat = self.Profiler()
@@ -123,8 +139,6 @@ class Node:
 			self.bstat = None
 
 	def transmit(self, ctx):
-		if ctx.src is None or ctx.dst is None:
-			raise Exception('src or dst is None')
 		if self.fstat is not None:
 			with self.fstat:
 				self._transmit(ctx)
@@ -135,8 +149,6 @@ class Node:
 		raise NotImplementedError()
 
 	def backprop(self, ctx):
-		if ctx.src is None or ctx.dst is None:
-			raise Exception('src or dst is None')
 		if self.bstat is not None:
 			with self.bstat:
 				self._backprop(ctx)

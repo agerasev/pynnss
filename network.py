@@ -2,84 +2,112 @@
 
 import numpy as np
 import pynn.array as array
-from pynn.node import Node, Site
+from pynn.node import Node, NodeInfo
 
 
 class Path:
-	def __init__(self, src, dst, site, mem=False):
+	def __init__(self, src, dst, size, mem=False):
 		self.src = src
 		self.dst = dst
-		self.info = site
+		self.size = size
 		self.mem = mem
+
+
+def _list(lst):
+	if lst is not None:
+		return list(lst)
+	else:
+		return []
+
+
+def _foreach(lst, fmap):
+	res = []
+	for item in lst:
+		out = None
+		if item is not None:
+			out = fmap(item)
+		res.append(out)
+	return res
 
 
 class _Nodes:
 	def __init__(self, nodes=None):
-		self.nodes = {}
-		if nodes is not None:
-			for key, node in nodes.items():
-				if node is not None:
-					self.nodes[key] = node
+		self.nodes = _list(nodes)
+
+	def _fornodes(self, fmap):
+		return _foreach(self.nodes, fmap)
 
 
 class _Paths:
 	def __init__(self, paths=None):
-		self.paths = {}
-		if paths is not None:
-			for key, path in paths.itemss():
-				if path is not None:
-					self.paths[key] = path
+		self.paths = _list(paths)
 
-	def _addpath(self, path):
-		key = len(self.paths)
-		self.paths[key] = path
-		return key
+	def _forpaths(self, fmap):
+		return _foreach(self.paths, fmap)
 
 
-class Network(Node, _Nodes, _Paths):
+class NetworkInfo(NodeInfo, _Nodes, _Paths):
+	def __init__(self):
+		pass
+
+
+class Network(Node, NetworkInfo, _Nodes, _Paths):
 	class _State(Node._State, _Nodes, _Paths):
-		def __init__(self, nodes, paths):
-			_Nodes.__init__(nodes)
-			_Paths.__init__(paths)
-			Node._State.__init__(self)
-
 		class _Memory(Node._State._Memory, _Nodes, _Paths):
 			def __init__(self, nodes, paths):
 				_Nodes.__init__(self, nodes)
-				_Paths.__init__(self, nodes)
+				_Paths.__init__(self, paths)
 				Node._State._Memory.__init__(self)
 
 		def newMemory(self, factory):
-			nodes = {k: n.newMemory(factory) for k, n in self.nodes.items()}
-			paths = {k: factory.copy(p) for k, p in self.paths.items()}
+			nodes = self._fornodes(lambda n: n.newMemory(factory))
+			paths = self._forpaths(lambda p: factory.copy(p))
 			return self._Memory(nodes, paths)
 
 		class _Error(Node._State._Error, _Nodes, _Paths):
 			def __init__(self, nodes, paths):
 				_Nodes.__init__(self, nodes)
-				_Paths.__init__(self, nodes)
+				_Paths.__init__(self, paths)
 				Node._State._Error.__init__(self)
 
 		def newError(self, factory):
-			nodes = {k: n.newError(factory) for k, n in self.nodes.items()}
-			paths = {k: factory.zeros(p.shape) for k, p in self.paths.items()}
+			nodes = self._fornodes(lambda n: n.newError(factory))
+			paths = self._forpaths(lambda p: factory.zeros(p.shape))
 			return self._Error(nodes, paths)
 
 		class _Gradient(Node._State._Gradient, _Nodes):
-			def __init__(self):
-				pass
+			def __init__(self, nodes):
+				_Nodes.__init__(self, nodes)
+				Node._State._Gradient.__init__(self)
+
+		def newGradient(self, factory):
+			nodes = self._fornodes(lambda n: n.newGradient(factory))
+			return self._Gradient(nodes)
 
 		class _Rate(Node._State._Rate, _Nodes):
-			def __init__(self):
-				pass
+			def __init__(self, nodes):
+				_Nodes.__init__(self, nodes)
+				Node._State._Rate.__init__(self)
+
+		def newRate(self, factory, *args, **kwargs):
+			nodes = self._fornodes(
+				lambda n: n.newRate(factory, *args, **kwargs)
+				)
+			return self._Rate(nodes)
+
+		def __init__(self, nodes, paths):
+			_Nodes.__init__(self, nodes)
+			_Paths.__init__(self, paths)
+			Node._State.__init__(self)
 
 	def newState(self, factory):
-		nodes = {k: n.newState() for k, n in self.nodes.items()}
-		paths = {}
-		for key, path in self.paths:
-			info = path.info
+		nodes = [n.newState(factory) for n in self.nodes]
+		paths = []
+		for path in self.paths:
+			data = None
 			if path.mem:
-				paths[key] = factory.zeros(info.size)
+				data = factory.zeros(path.size)
+			paths.append(data)
 		return self._State(nodes, paths)
 
 	class _Trace(Node._Trace, _Nodes):
@@ -88,110 +116,107 @@ class Network(Node, _Nodes, _Paths):
 			Node._Trace.__init__(self)
 
 	def newTrace(self, factory):
-		nodes = {k: n.newTrace() for k, n in self.nodes.items()}
-		return self._Trace(nodes)
+		return self._Trace([n.newTrace(factory) for n in self.nodes])
 
 	class _Context(Node._Context, _Nodes, _Paths):
-		def _gmem(self):
-			return self._mem
-
-		def _smem(self, mem):
-			self._mem = mem
-			if mem is not None:
-				for k, n in self.nodes.items():
-					n.mem = mem.nodes[k]
-				for k, p in self.paths.items():
-					pass
-
-		def __init__(self, nodes, paths, ipaths, opaths, src, dst, **kwargs):
-			_Nodes.__init__(nodes)
-			_Paths.__init__(paths)
-			Node._Context.__init__(self, src, dst, **kwargs)
-
-	def newContext(self, factory, *args, **kwargs):
-		paths = {}
-		for key, path in self.paths.items():
-			if path.mem:
-				paths[key] = path
-			else:
-				paths[key] = factory.empty(path.site.size)
-		nodes = {}
-		for key, node in self.nodes.items():
-			if node.inum == 1:
-				pass
-			else:
+		class _Src:
+			def __init__(self, outer):
 				pass
 
-		return self._Context(self, nodes, paths, *args, **kwargs)
+		class _Dst:
+			def __init__(self, outer):
+				pass
+
+		def __init__(self, node, nodes, paths):
+			_Nodes.__init__(self, nodes)
+			_Paths.__init__(self, paths)
+			Node._Context.__init__(self, node)
+
+	def newContext(self, factory):
+		nodes = [n.newContext(factory) for n in self.nodes]
+		paths = [factory.empty(p.size) for p in self.paths]
+		return self._Context(self, nodes, paths)
 
 	def __init__(self, isizes, osizes, **kwargs):
 		_Nodes.__init__(self)
 		_Paths.__init__(self)
-		if type(isizes) == int:
-			isites = [Site(isizes)]
-		else:
-			isites = []
-			for size in isizes:
-				isites.append(Site(size))
-		if type(osizes) == int:
-			osites = [Site(osizes)]
-		else:
-			osites = []
-			for size in osizes:
-				osites.append(Site(size))
-		Node.__init__(self, isites, osites, **kwargs)
-		self.ipaths = []
-		self.opaths = []
+		Node.__init__(self, isizes, osizes, **kwargs)
+		NetworkInfo.__init__(self)
+		self.ipaths = [None]*self.inum
+		self.opaths = [None]*self.onum
 		self._flink = {}
 		self._blink = {}
 
-	def add(self, key, node):
-		if key in self.nodes.keys():
-			raise Exception('key %d already used' % key)
-		self.nodes[key] = node
+	def addnodes(self, nodes):
+		if isinstance(nodes, Node):
+			nodes = [nodes]
+		for node in nodes:
+			self.nodes.append(node)
 
-	def _getnode(self, nid):
-		sn = 0
+	def _nodeid(self, nid):
+		pos = 0
 		if type(nid) == tuple:
 			key = nid[0]
-			sn = nid[1]
+			pos = nid[1]
 		else:
 			key = nid
-		if key not in self.nodes.keys():
+		if key < 0 or key >= len(self.nodes):
 			raise Exception('no node with key %d' % key)
 		node = self.nodes[key]
-		return (key, sn), node
+		return (key, pos), node
 
-	def _getsnode(self, sid):
-		(key, sn), node = self._getnode(sid)
-		if sn < 0 or sn >= node.onum:
-			raise Exception('wrong output site %d for node %d' % (sn, key))
-		return (key, sn), node, node.osites[sn]
+	def _snodeid(self, sid):
+		(key, pos), node = self._nodeid(sid)
+		if pos < 0 or pos >= node.onum:
+			raise Exception('wrong opos %d for node %d' % (pos, key))
+		return (key, pos), node, node.osizes[pos]
 
-	def _getdnode(self, did):
-		(key, sn), node = self._getnode(did)
-		if sn < 0 or sn >= node.inum:
-			raise Exception('wrong input site %d for node %d' % (sn, key))
-		return (key, sn), node, node.isites[sn]
+	def _dnodeid(self, did):
+		(key, pos), node = self._nodeid(did)
+		if pos < 0 or pos >= node.inum:
+			raise Exception('wrong ipos %d for node %d' % (pos, key))
+		return (key, pos), node, node.isizes[pos]
 
-	def connect(self, sid, did, mem=False):
-		src, snode, ssite = self._getsnode(sid)
-		dst, dnode, dsite = self._getdnode(did)
-		if ssite != dsite:
-			raise Exception('sites not match')
+	def _sisfree(self, src):
 		if src in self._flink.keys():
 			raise Exception('output (%d,%d) already connected' % src)
+
+	def _disfree(self, dst):
 		if dst in self._blink.keys():
 			raise Exception('input (%d,%d) already connected' % dst)
-		key = self.paths._addpath(Path(src, dst, ssite, mem))
-		self._flink[src] = len(self.paths) - 1
-		self._blink[dst] = len(self.paths) - 1
-		return key
 
-	def input(self, did):
-		dst, dnode, dsite = self._getdnode(did)
-		self.ipaths.append(Path(None, dst, dsite))
+	def connect(self, connids, mem=False):
+		if connids is tuple:
+			connids = [connids]
+		for sid, did in connids:
+			src, snode, ssize = self._snodeid(sid)
+			dst, dnode, dsize = self._dnodeid(did)
+			if ssize != dsize:
+				raise Exception('sizes dont match')
+			self._sisfree(src)
+			self._disfree(dst)
+			self.paths.append(Path(src, dst, ssize, mem))
+			self._flink[src] = len(self.paths) - 1
+			self._blink[dst] = len(self.paths) - 1
 
-	def output(self, sid):
-		src, snode, ssite = self._getsnode(sid)
-		self.opaths.append(Path(src, None, ssite))
+	def setinputs(self, dids):
+		if type(dids) is int or type(dids) is tuple:
+			dids = [dids]
+		for i, did in enumerate(dids):
+			dst, dnode, dsize = self._dnodeid(did)
+			self._disfree(dst)
+			if dsize != self.isizes[i]:
+				raise Exception('sizes dont match')
+			self.ipaths[i] = Path(None, dst, dsize)
+			self._blink[dst] = -1
+
+	def setoutputs(self, sids):
+		if type(sids) is int or type(sids) is tuple:
+			sids = [sids]
+		for i, sid in enumerate(sids):
+			src, snode, ssize = self._snodeid(sid)
+			self._sisfree(src)
+			if ssize != self.osizes[i]:
+				raise Exception('sizes dont match')
+			self.opaths[i] = Path(src, None, ssize)
+			self._flink[src] = -1

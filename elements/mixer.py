@@ -20,18 +20,18 @@ class Mixer(Element):
 	def _transmit(self, ctx):
 		array.copy(ctx.accum, ctx.src[0])
 		for i in range(1, self.inum):
-			array.radd(ctx.accum, ctx.src[i])
+			array.radd(ctx.accum, ctx.srcs[i])
 
 		for i in range(self.onum):
-			array.copy(ctx.dst[i], ctx.accum)
+			array.copy(ctx.dsts[i], ctx.accum)
 
 	def _backprop(self, ctx):
 		array.copy(ctx.accum, ctx.dst[0])
 		for i in range(1, self.onum):
-			array.radd(ctx.accum, ctx.dst[i])
+			array.radd(ctx.accum, ctx.dsts[i])
 
 		for i in range(self.inum):
-			array.copy(ctx.src[i], ctx.accum)
+			array.copy(ctx.srcs[i], ctx.accum)
 
 
 class Fork(Mixer):
@@ -42,11 +42,11 @@ class Fork(Mixer):
 		Mixer.__init__(self, size, 1, 2, **kwargs)
 
 	def _transmit(self, ctx):
-		array.copy(ctx.dst[0], ctx.src)
-		array.copy(ctx.dst[1], ctx.src)
+		array.copy(ctx.dsts[0], ctx.src)
+		array.copy(ctx.dsts[1], ctx.src)
 
 	def _backprop(self, ctx):
-		array.add(ctx.src, ctx.dst[0], ctx.dst[1])
+		array.add(ctx.src, ctx.dsts[0], ctx.dsts[1])
 
 
 class Join(Mixer):
@@ -57,8 +57,8 @@ class Join(Mixer):
 		Mixer.__init__(self, size, 2, 1, **kwargs)
 
 	def _transmit(self, ctx):
-		array.add(ctx.dst, ctx.src[0], ctx.src[1])
+		array.add(ctx.dst, ctx.srcs[0], ctx.srcs[1])
 
 	def _backprop(self, ctx):
-		array.copy(ctx.src[0], ctx.dst)
-		array.copy(ctx.src[1], ctx.dst)
+		array.copy(ctx.srcs[0], ctx.dst)
+		array.copy(ctx.srcs[1], ctx.dst)

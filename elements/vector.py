@@ -6,7 +6,7 @@ from pynn.element import Element
 
 class VectorElement(Element):
 	def __init__(self, size, **kwargs):
-		Element.__init__(self, [size], [size], **kwargs)
+		Element.__init__(self, size, size, **kwargs)
 		self.size = size
 
 
