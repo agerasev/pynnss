@@ -35,10 +35,12 @@ You can define your own.
 
 ## TODO
 - [x] AdaGrad
+- [x] Separate structure and state
+- [x] Propagation memory
+- [ ] Learn initial state
 - [ ] Complex numbers support
 - [ ] Loss layers
-- [ ] Reductors
+- [ ] Async layers
 - [ ] Pre-defined common networks
-- [ ] Separate structure and state
 - [ ] Multithreading
 - [ ] GPU Acceleration

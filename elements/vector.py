@@ -1,8 +1,6 @@
 #!/usr/bin/python3
 
-import numpy as np
 import pynn.array as array
-from pynn.array import Array
 from pynn.element import Element
 
 
@@ -16,8 +14,8 @@ class Bias(VectorElement):
 	def __init__(self, size, **kwargs):
 		VectorElement.__init__(self, size, **kwargs)
 
-	def newState(self):
-		return self._State(Array(np.zeros(self.size)))
+	def newState(self, factory):
+		return self._State(factory.zeros(self.size))
 
 	def _transmit(self, ctx):
 		array.add(ctx.dst, ctx.src, ctx.state.data)
@@ -43,16 +41,18 @@ class Tanh(VectorElement):
 	def __init__(self, size, **kwargs):
 		VectorElement.__init__(self, size, **kwargs)
 
-	class _Memory(Element._Memory):
-		def __init__(self, osize):
-			Element._Memory.__init__(self)
-			self.odata = Array(osize)
+	class _Trace(Element._Trace):
+		def __init__(self, odata):
+			Element._Trace.__init__(self)
+			self.odata = odata
 
-	def newMemory(self):
-		return self._Memory(self.odata)
+	def newTrace(self, factory):
+		return self._Trace(factory.empty(self.size))
 
 	def _transmit(self, ctx):
 		array.tanh(ctx.dst, ctx.src)
+		if ctx.mem is not None:
+			array.copy(ctx.mem.odata, ctx.dst)
 
 	def _backprop(self, ctx):
 		array.bptanh(ctx.src, ctx.dst, ctx.mem.odata)

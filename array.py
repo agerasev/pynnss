@@ -3,33 +3,54 @@
 import numpy as np
 
 
-class Array:
-	def __init__(self, arg, dtype=None, gpu=False):
-		self.gpu = gpu
-
-		if type(arg) == Array:
-			if dtype is None:
-				dtype = arg.dtype
-			self.np = np.array(arg.np, dtype=dtype)
-		elif type(arg) == np.ndarray:
-			if dtype is None:
-				dtype = arg.dtype
-			self.np = np.array(arg, dtype=dtype)
-		elif type(arg) == tuple or type(arg) == int:
-			if dtype is None:
-				dtype = float
-			self.np = np.empty(arg, dtype=dtype)
-		else:
-			raise Exception('wrong argument: %s' % type(arg).__name__)
-
+class _Array:
+	def __init__(self, shape, dtype):
+		self.shape = shape
 		self.dtype = dtype
-		self.shape = self.np.shape
+
+	def get(self):
+		raise NotImplementedError()
+
+	def set(self, data):
+		raise NotImplementedError()
+
+
+class _ArrayCPU(_Array):
+	def __init__(self, nparray):
+		_Array.__init__(self, nparray.shape, nparray.dtype)
+		self.np = nparray
 
 	def get(self):
 		return np.copy(self.np)
 
 	def set(self, data):
 		np.copyto(self.np, data)
+
+
+class _Factory:
+	def __init__(self, dtype=np.float64):
+		self.dtype = dtype
+
+
+class _FactoryCPU(_Factory):
+	def __init__(self, dtype=np.float64):
+		_Factory.__init__(self, dtype)
+
+	def empty(self, shape):
+		return _ArrayCPU(np.empty(shape, dtype=self.dtype))
+
+	def zeros(self, shape):
+		return _ArrayCPU(np.zeros(shape, dtype=self.dtype))
+
+	def copy(self, array):
+		return _ArrayCPU(np.array(array.np, dtype=self.dtype))
+
+	def copynp(self, nparray):
+		return _ArrayCPU(np.array(nparray, dtype=self.dtype))
+
+
+def newFactory(dtype=None, gpu=False):
+	return _FactoryCPU(dtype=(np.float64 if dtype is None else dtype))
 
 
 def copy(dst, src):
@@ -53,17 +74,18 @@ def rclip(dst, lv, rv):
 
 
 def mul(dst, one, two):
-	if isinstance(two, Array):
+	if isinstance(two, _Array):
 		np.mul(one.np, two.np, out=dst.np)
 	else:
 		np.mul(one.np, two, out=dst.np)
 
 
+def rmuls(dst, src):
+	dst.np *= src
+
+
 def rmul(dst, src):
-	if isinstance(src, Array):
-		dst.np *= src.np
-	else:
-		dst.np *= src
+	dst.np *= src.np
 
 
 def dot(dst, one, two):
@@ -74,11 +96,12 @@ def raddouter(dst, one, two):
 	dst.np += np.outer(one.np, two.np)
 
 
+def rsubmuls(dst, one, two):
+	dst.np -= one.np*two
+
+
 def rsubmul(dst, one, two):
-	if isinstance(two, Array):
-		dst.np -= one.np*two.np
-	else:
-		dst.np -= one.np*two
+	dst.np -= one.np*two.np
 
 
 def tanh(dst, src):

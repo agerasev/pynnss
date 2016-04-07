@@ -2,11 +2,9 @@
 
 import numpy as np
 import pynn.array as array
-from pynn.array import Array
-from pynn.node import Node
+from pynn.node import Node, Site
 
 
-# Element is a basic node
 class Element(Node):
 	class _State(Node._State):
 		def __init__(self, data=None):
@@ -22,14 +20,14 @@ class Element(Node):
 				self.data = data
 
 			def mul(self, factor):
-				array.rmul(self.data, factor)
+				array.rmuls(self.data, factor)
 
 			def clip(self, value):
 				array.rclip(self.data, -value, value)
 
-		def newGradient(self):
+		def newGradient(self, factory):
 			if self.data is not None:
-				return self._Gradient(Array(np.zeros(self.data.shape)))
+				return self._Gradient(factory.zeros(self.data.shape))
 			return None
 
 		class _RateConst(Node._State._Rate):
@@ -38,7 +36,7 @@ class Element(Node):
 				self.factor = factor
 
 			def apply(self, dst, src):
-				array.rsubmul(dst, src, self.factor)
+				array.rsubmuls(dst, src, self.factor)
 
 		class _RateAdaGrad(_RateConst):
 			def __init__(self, factor, data):
@@ -51,22 +49,23 @@ class Element(Node):
 			def apply(self, dst, src):
 				array.rsub_adagrad(dst, src, self.factor, self.data)
 
-		def newRate(self, factor, **kwargs):
+		def newRate(self, factory, rate, **kwargs):
 			if kwargs.get('adagrad', False):
-				return self._RateAdaGrad(factor, Array(np.zeros(self.data.shape) + 1e-6))
+				nparray = np.zeros(self.data.shape) + 1e-6
+				return self._RateAdaGrad(rate, factory.copynp(nparray))
 			else:
-				return self._RateConst(factor)
+				return self._RateConst(rate)
 
 		def learn(self, grad, rate):
 			if grad is not None:
 				rate.apply(self.data, grad.data)
 
-	def newState(self):
+	def newState(self, factory):
 		return None
 
 	def __init__(self, isizes, osizes, **kwargs):
-		isites = [self.Site(isize) for isize in isizes]
-		osites = [self.Site(osize) for osize in osizes]
+		isites = [Site(isize) for isize in isizes]
+		osites = [Site(osize) for osize in osizes]
 		Node.__init__(self, isites, osites, **kwargs)
 
 	def _transmit(self, ctx):

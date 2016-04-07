@@ -2,7 +2,6 @@
 
 import numpy as np
 import pynn.array as array
-from pynn.array import Array
 from pynn.element import Element
 
 
@@ -18,26 +17,27 @@ class Matrix(MatrixElement):
 		MatrixElement.__init__(self, isize, osize, **kwargs)
 
 	class _State(Element._State):
-		def __init__(self, isize, osize):
-			arr = Array(0.01*np.random.randn(osize, isize))
-			Element._State.__init__(self, arr)
+		def __init__(self, data):
+			Element._State.__init__(self, data)
 
-	def newState(self):
-		return self._State(self.isize, self.osize)
+	def newState(self, factory):
+		rand = 0.01*np.random.randn(self.osize, self.isize)
+		return self._State(factory.copynp(rand))
 
-	class _Memory(Element._Memory):
-		def __init__(self, isize):
-			Element._Memory.__init__(self)
-			self.idata = Array(isize)
+	class _Trace(Element._Trace):
+		def __init__(self, idata):
+			Element._Trace.__init__(self)
+			self.idata = idata
 
-	def newMemory(self):
-		return self._Memory(self.isize)
+	def newTrace(self, factory):
+		return self._Trace(factory.empty(self.isize))
 
 	def _transmit(self, ctx):
-		array.copy(ctx.mem.idata, ctx.src)
+		if ctx.trace is not None:
+			array.copy(ctx.trace.idata, ctx.src)
 		array.dot(ctx.dst, ctx.state.data, ctx.src)
 
 	def _backprop(self, ctx):
 		if ctx.grad is not None:
-			array.raddouter(ctx.grad.data, ctx.dst, ctx.mem.idata)
+			array.raddouter(ctx.grad.data, ctx.dst, ctx.trace.idata)
 		array.dot(ctx.src, ctx.dst, ctx.state.data)

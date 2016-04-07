@@ -1,271 +1,197 @@
 #!/usr/bin/python3
 
-from pynn.node import Node
-from pynn.path import Pipe
-
 import numpy as np
-from copy import copy
-
-# Network is a Node that contains other Nodes connected with each other with Paths
-
-class Network(Node):
-	class _State(Node._State):
-		def __init__(self):
-			Node._State.__init__(self)
-			self.nodes = {}
-			self.pipes = []
-
-		def __copy__(self):
-			state = Network._State()
-			for key in self.nodes:
-				state.nodes[key] = copy(self.nodes[key])
-			for i in range(len(self.pipes)):
-				state.pipes.append(Pipe(self.pipes[i].data))
-			return state
-
-	def newState(self):
-		state = self._State()
-		for key in self.nodes:
-			state.nodes[key] = self.nodes[key].newState()
-		for i in range(len(self.paths)):
-			state.pipes.append(Pipe(self.paths[i].state))
-		return state
-
-	class _Error(Node._Error):
-		def __init__(self):
-			Node._Error.__init__(self)
-			self.nodes = {}
-			self.pipes = []
-
-		def __copy__(self):
-			error = Network._State()
-			for key in self.nodes:
-				error.nodes[key] = copy(self.nodes[key])
-			for i in range(len(self.pipes)):
-				error.pipes.append(Pipe(self.pipes[i].data))
-			return error
-
-	def newError(self):
-		error = self._Error()
-		for key in self.nodes:
-			error.nodes[key] = self.nodes[key].newError()
-		for i in range(len(self.paths)):
-			data = None
-			if self.paths[i].state is not None:
-				data = np.zeros_like(self.paths[i].state)
-			error.pipes.append(Pipe(data))
-		return error
-
-	class _Gradient(Node._Gradient):
-		def __init__(self):
-			Node._Gradient.__init__(self)
-			self.nodes = {}
-
-		def mul(self, factor):
-			for key, node in self.nodes.items():
-				if node is not None:
-					node.mul(factor)
-
-		def clip(self, value):
-			for key, node in self.nodes.items():
-				if node is not None:
-					node.clip(value)
-
-	def newGradient(self):
-		grad = self._Gradient()
-		for key in self.nodes:
-			grad.nodes[key] = self.nodes[key].newGradient()
-		return grad
+import pynn.array as array
+from pynn.node import Node, Site
 
 
-	def __init__(self, nins, nouts):
-		Node.__init__(self, nins, nouts)
-		self.ins = [None]*nins
-		self.outs = [None]*nouts
+class Path:
+	def __init__(self, src, dst, site, mem=False):
+		self.src = src
+		self.dst = dst
+		self.info = site
+		self.mem = mem
+
+
+class _Nodes:
+	def __init__(self, nodes=None):
 		self.nodes = {}
-		self.paths = []
+		if nodes is not None:
+			for key, node in nodes.items():
+				if node is not None:
+					self.nodes[key] = node
+
+
+class _Paths:
+	def __init__(self, paths=None):
+		self.paths = {}
+		if paths is not None:
+			for key, path in paths.itemss():
+				if path is not None:
+					self.paths[key] = path
+
+	def _addpath(self, path):
+		key = len(self.paths)
+		self.paths[key] = path
+		return key
+
+
+class Network(Node, _Nodes, _Paths):
+	class _State(Node._State, _Nodes, _Paths):
+		def __init__(self, nodes, paths):
+			_Nodes.__init__(nodes)
+			_Paths.__init__(paths)
+			Node._State.__init__(self)
+
+		class _Memory(Node._State._Memory, _Nodes, _Paths):
+			def __init__(self, nodes, paths):
+				_Nodes.__init__(self, nodes)
+				_Paths.__init__(self, nodes)
+				Node._State._Memory.__init__(self)
+
+		def newMemory(self, factory):
+			nodes = {k: n.newMemory(factory) for k, n in self.nodes.items()}
+			paths = {k: factory.copy(p) for k, p in self.paths.items()}
+			return self._Memory(nodes, paths)
+
+		class _Error(Node._State._Error, _Nodes, _Paths):
+			def __init__(self, nodes, paths):
+				_Nodes.__init__(self, nodes)
+				_Paths.__init__(self, nodes)
+				Node._State._Error.__init__(self)
+
+		def newError(self, factory):
+			nodes = {k: n.newError(factory) for k, n in self.nodes.items()}
+			paths = {k: factory.zeros(p.shape) for k, p in self.paths.items()}
+			return self._Error(nodes, paths)
+
+		class _Gradient(Node._State._Gradient, _Nodes):
+			def __init__(self):
+				pass
+
+		class _Rate(Node._State._Rate, _Nodes):
+			def __init__(self):
+				pass
+
+	def newState(self, factory):
+		nodes = {k: n.newState() for k, n in self.nodes.items()}
+		paths = {}
+		for key, path in self.paths:
+			info = path.info
+			if path.mem:
+				paths[key] = factory.zeros(info.size)
+		return self._State(nodes, paths)
+
+	class _Trace(Node._Trace, _Nodes):
+		def __init__(self, nodes):
+			_Nodes.__init__(self, nodes)
+			Node._Trace.__init__(self)
+
+	def newTrace(self, factory):
+		nodes = {k: n.newTrace() for k, n in self.nodes.items()}
+		return self._Trace(nodes)
+
+	class _Context(Node._Context, _Nodes, _Paths):
+		def _gmem(self):
+			return self._mem
+
+		def _smem(self, mem):
+			self._mem = mem
+			if mem is not None:
+				for k, n in self.nodes.items():
+					n.mem = mem.nodes[k]
+				for k, p in self.paths.items():
+					pass
+
+		def __init__(self, nodes, paths, ipaths, opaths, src, dst, **kwargs):
+			_Nodes.__init__(nodes)
+			_Paths.__init__(paths)
+			Node._Context.__init__(self, src, dst, **kwargs)
+
+	def newContext(self, factory, *args, **kwargs):
+		paths = {}
+		for key, path in self.paths.items():
+			if path.mem:
+				paths[key] = path
+			else:
+				paths[key] = factory.empty(path.site.size)
+		nodes = {}
+		for key, node in self.nodes.items():
+			if node.inum == 1:
+				pass
+			else:
+				pass
+
+		return self._Context(self, nodes, paths, *args, **kwargs)
+
+	def __init__(self, isizes, osizes, **kwargs):
+		_Nodes.__init__(self)
+		_Paths.__init__(self)
+		if type(isizes) == int:
+			isites = [Site(isizes)]
+		else:
+			isites = []
+			for size in isizes:
+				isites.append(Site(size))
+		if type(osizes) == int:
+			osites = [Site(osizes)]
+		else:
+			osites = []
+			for size in osizes:
+				osites.append(Site(size))
+		Node.__init__(self, isites, osites, **kwargs)
+		self.ipaths = []
+		self.opaths = []
 		self._flink = {}
 		self._blink = {}
 
-	def link(self, path):
-		self.paths.append(path)
-		self.update()
+	def add(self, key, node):
+		if key in self.nodes.keys():
+			raise Exception('key %d already used' % key)
+		self.nodes[key] = node
 
-	def update(self):
-		for i in range(len(self.paths)):
-			p = self.paths[i]
-			self._flink[p.src] = i
-			self._blink[p.dst] = i
+	def _getnode(self, nid):
+		sn = 0
+		if type(nid) == tuple:
+			key = nid[0]
+			sn = nid[1]
+		else:
+			key = nid
+		if key not in self.nodes.keys():
+			raise Exception('no node with key %d' % key)
+		node = self.nodes[key]
+		return (key, sn), node
 
-	class _PropInfo:
-		class NodeInfo:
-			def __init__(self):
-				self.acted = 0
-				self.check = 0
-		def __init__(self, keys):
-			self.nodes = {}
-			for key in keys:
-				self.nodes[key] = self.NodeInfo()
+	def _getsnode(self, sid):
+		(key, sn), node = self._getnode(sid)
+		if sn < 0 or sn >= node.onum:
+			raise Exception('wrong output site %d for node %d' % (sn, key))
+		return (key, sn), node, node.osites[sn]
 
-	# step forward
-	def _step(self, state, info):
-		count = 0
-		for key in list(self.nodes.keys()):
-			node = self.nodes[key]
+	def _getdnode(self, did):
+		(key, sn), node = self._getnode(did)
+		if sn < 0 or sn >= node.inum:
+			raise Exception('wrong input site %d for node %d' % (sn, key))
+		return (key, sn), node, node.isites[sn]
 
-			# check node has not activated yet
-			if info.nodes[key].acted != 0:
-				# node already activated and has state
-				continue
+	def connect(self, sid, did, mem=False):
+		src, snode, ssite = self._getsnode(sid)
+		dst, dnode, dsite = self._getdnode(did)
+		if ssite != dsite:
+			raise Exception('sites not match')
+		if src in self._flink.keys():
+			raise Exception('output (%d,%d) already connected' % src)
+		if dst in self._blink.keys():
+			raise Exception('input (%d,%d) already connected' % dst)
+		key = self.paths._addpath(Path(src, dst, ssite, mem))
+		self._flink[src] = len(self.paths) - 1
+		self._blink[dst] = len(self.paths) - 1
+		return key
 
-			# check all node input pipes is ready
-			pipecount = 0
-			for i in range(node.nins):
-				pipe = state.pipes[self._blink[(key, i)]]
-				if pipe.data is not None:
-					pipecount += 1
-				else:
-					break
+	def input(self, did):
+		dst, dnode, dsite = self._getdnode(did)
+		self.ipaths.append(Path(None, dst, dsite))
 
-			if pipecount != node.nins:
-				# node is not ready, check next node
-				continue
-
-			info.nodes[key].acted += 1
-
-			# extract inputs from pipes
-			vins = []
-			for i in range(node.nins):
-				pipe = state.pipes[self._blink[(key, i)]]
-				vins.append(pipe.data)
-				pipe.data = None
-
-			# propagate signal through node
-			vouts = node.transmit(state.nodes[key], vins)
-
-			# put outputs into pipes
-			for i in range(node.nouts):
-				pipe = state.pipes[self._flink[(key, i)]]
-				if pipe.data is not None:
-					raise Exception('Node ' + str(key) + ' output pipe is not empty')
-				pipe.data = vouts[i]
-
-			count += 1
-		return count
-
-	# forward propagation
-	def _transmit(self, state, vins):
-		# prepare propagation info
-		info = self._PropInfo(self.nodes.keys())
-
-		# put inputs in pipes
-		for i in range(self.nins):
-			pidx = self._flink[(-1, i)]
-			pipe = state.pipes[pidx]
-			if pipe.data is not None:
-				raise Exception('Input pipe ' + str(pidx) + ' is not empty')
-			pipe.data = vins[i]
-
-		# propagate signals through nodes
-		# while there is something to propagate
-		count = 1
-		while count > 0:
-			count = self._step(state, info)
-
-		# extract outputs from pipes
-		vouts = []
-		for i in range(self.nouts):
-			pidx = self._blink[(-1, i)]
-			pipe = state.pipes[pidx]
-			if pipe.data is None:
-				raise Exception('Output pipe ' + str(pidx) + ' is empty')
-			vouts.append(pipe.data)
-			pipe.data = None
-
-		return vouts
-
-
-	# step back
-	def _backstep(self, grad, error, state, info):
-		count = 0
-		for key in reversed(list(self.nodes.keys())):
-			node = self.nodes[key]
-
-			# check node has not activated yet
-			if info.nodes[key].acted != 0:
-				# node already activated and has error state
-				continue
-
-			# check all node output pipes is ready
-			pipecount = 0
-			for i in range(node.nouts):
-				pipe = error.pipes[self._flink[(key, i)]]
-				if pipe.data is not None:
-					pipecount += 1
-				else:
-					break
-
-			if pipecount != node.nouts:
-				# node is not ready, check next node
-				continue
-
-			info.nodes[key].acted += 1
-
-			# extract ouput errors from pipes
-			eouts = []
-			for i in range(node.nouts):
-				pipe = error.pipes[self._flink[(key, i)]]
-				eouts.append(pipe.data)
-				pipe.data = None
-
-			# backpropagate error through node
-			node_grad = None
-			if grad is not None:
-				node_grad = grad.nodes[key]
-			eins = node.backprop(node_grad, error.nodes[key], state.nodes[key], eouts)
-
-			# put input errors into pipes
-			for i in range(node.nins):
-				pipe = error.pipes[self._blink[(key, i)]]
-				if pipe.data is not None:
-					raise Exception('Node ' + str(key) + ' input pipe is not empty')
-				pipe.data = eins[i]
-
-			count += 1
-		return count
-
-	# error backpropagation
-	def _backprop(self, grad, error, state, eouts):
-		# prepare propagation info
-		info = self._PropInfo(self.nodes.keys())
-
-		# put output errors in pipes
-		for i in range(self.nouts):
-			pidx = self._blink[(-1, i)]
-			pipe = error.pipes[pidx]
-			if pipe.data is not None:
-				raise Exception('Output pipe ' + str(pidx) + ' is not empty')
-			pipe.data = eouts[i]
-
-		# backpropagate errors through nodes
-		# while there is something to propagate
-		count = 1
-		while count > 0:
-			count = self._backstep(grad, error, state, info)
-
-		# extract input errors from pipes
-		eins = []
-		for i in range(self.nins):
-			pidx = self._flink[(-1, i)]
-			pipe = error.pipes[pidx]
-			if pipe.data is None:
-				raise Exception('Input pipe ' + str(pidx) + ' is empty')
-			eins.append(pipe.data)
-			pipe.data = None
-
-		return eins
-
-	# learn network using gradient and learning rate
-	def learn(self, grad, rate):
-		for key in self.nodes:
-			self.nodes[key].learn(grad.nodes[key], rate.nodes[key])
+	def output(self, sid):
+		src, snode, ssite = self._getsnode(sid)
+		self.opaths.append(Path(src, None, ssite))

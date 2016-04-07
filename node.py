@@ -3,14 +3,18 @@
 from time import clock
 
 
-# Node is structural unit of network
-class Node:
-	# describes node sites
-	class Site:
-		def __init__(self, size, dtype=float):
-			self.size = size
-			self.dtype = dtype
+class Site:
+	def __init__(self, size):
+		self.size = size
 
+	def __eq__(self, other):
+		return self.size == other.size
+
+	def __ne__(self, other):
+		return not (self == other)
+
+
+class Node:
 	class Profiler:
 		def __init__(self):
 			self.start = 0
@@ -22,7 +26,6 @@ class Node:
 		def __exit__(self, *args):
 			self.time += clock() - self.start
 
-	# stores node state like biases or matrix weights
 	class _State:
 		def __init__(self):
 			pass
@@ -30,7 +33,26 @@ class Node:
 		def copyto(self, out):
 			raise NotImplementedError()
 
-		# stores learn results
+		class _Memory:
+			def __init__(self):
+				pass
+
+			def copyto(self, out):
+				pass
+
+		def newMemory(self, factory):
+			return None
+
+		class _Error:
+			def __init__(self):
+				pass
+
+			def copyto(self, out):
+				pass
+
+		def newError(self, factory):
+			return None
+
 		class _Gradient:
 			def __init__(self):
 				pass
@@ -41,59 +63,50 @@ class Node:
 			def clip(self, value):
 				raise NotImplementedError()
 
-		def newGradient(self):
+			def clear(self):
+				raise NotImplementedError()
+
+		def newGradient(self, factory):
 			return None
 
-		# learning rate
 		class _Rate:
 			def __init__(self):
 				pass
 
-		def newRate(self):
+		def newRate(self, factory):
 			return self._Rate()
 
 		def learn(self, grad, rate):
 			raise NotImplementedError()
 
-	def newState(self):
+	def newState(self, factory):
 		return None
 
-	# stores node memory e.g. inputs, outputs and data in loopbacks
-	class _Memory:
+	class _Trace:
 		def __init__(self):
 			pass
 
 		def copyto(self, out):
 			pass
 
-	def newMemory(self):
+	def newTrace(self, factory):
 		return None
 
-	# stores node errors
-	class _Error:
-		def __init__(self):
-			pass
-
-		def copyto(self, out):
-			pass
-
-	def newError(self):
-		return None
-
-	# context for evaluation
 	class _Context:
 		def __init__(self, src, dst, **kwargs):
 			self.src = src
 			self.dst = dst
+
 			self.state = kwargs.get('state')
+			self.trace = kwargs.get('trace')
+
 			self.mem = kwargs.get('mem')
+			self.err = kwargs.get('err')
 
-			if kwargs.get('learn', True):
-				self.grad = kwargs.get('grad')
-				self.err = kwargs.get('err')
-				self.rate = kwargs.get('rate')
+			self.grad = kwargs.get('grad')
+			self.rate = kwargs.get('rate')
 
-	def newContext(self, *args, **kwargs):
+	def newContext(self, factory, *args, **kwargs):
 		return self._Context(*args, **kwargs)
 
 	def __init__(self, isites, osites, **kwargs):
@@ -110,6 +123,8 @@ class Node:
 			self.bstat = None
 
 	def transmit(self, ctx):
+		if ctx.src is None or ctx.dst is None:
+			raise Exception('src or dst is None')
 		if self.fstat is not None:
 			with self.fstat:
 				self._transmit(ctx)
@@ -120,6 +135,8 @@ class Node:
 		raise NotImplementedError()
 
 	def backprop(self, ctx):
+		if ctx.src is None or ctx.dst is None:
+			raise Exception('src or dst is None')
 		if self.bstat is not None:
 			with self.bstat:
 				self._backprop(ctx)
