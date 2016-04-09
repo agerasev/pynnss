@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from pynn.node import Node
+from pynnorig.node import Node
 
 import numpy as np
 

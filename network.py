@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
-from pynn.node import Node
-from pynn.path import Pipe
+from pynnorig.node import Node
+from pynnorig.path import Pipe
 
 import numpy as np
 from copy import copy

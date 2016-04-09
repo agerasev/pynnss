@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
-from pynn.network import Network
-from pynn.element import Element
+from pynnorig.network import Network
+from pynnorig.element import Element
 
 import numpy as np
 
