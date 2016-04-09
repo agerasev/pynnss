@@ -21,7 +21,7 @@ class Matrix(MatrixElement):
 			Element._State.__init__(self, data)
 
 	def newState(self, factory):
-		rand = 0.01*np.random.randn(self.osize, self.isize)
+		rand = 0.01*np.random.randn(self.isize, self.osize)
 		return self._State(factory.copynp(rand))
 
 	class _Trace(Element._Trace):
@@ -29,15 +29,18 @@ class Matrix(MatrixElement):
 			Element._Trace.__init__(self)
 			self.idata = idata
 
+		def copyto(self, out):
+			array.copy(out.idata, self.idata)
+
 	def newTrace(self, factory):
 		return self._Trace(factory.empty(self.isize))
 
 	def _transmit(self, ctx):
 		if ctx.trace is not None:
 			array.copy(ctx.trace.idata, ctx.src)
-		array.dot(ctx.dst, ctx.state.data, ctx.src)
+		array.dot(ctx.dst, ctx.src, ctx.state.data)
 
 	def _backprop(self, ctx):
 		if ctx.grad is not None:
-			array.raddouter(ctx.grad.data, ctx.dst, ctx.trace.idata)
-		array.dot(ctx.src, ctx.dst, ctx.state.data)
+			array.raddouter(ctx.grad.data, ctx.trace.idata, ctx.dst)
+		array.dot(ctx.src, ctx.state.data, ctx.dst)

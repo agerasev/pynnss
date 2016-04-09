@@ -46,16 +46,19 @@ class Tanh(VectorElement):
 			Element._Trace.__init__(self)
 			self.odata = odata
 
+		def copyto(self, out):
+			array.copy(out.odata, self.odata)
+
 	def newTrace(self, factory):
 		return self._Trace(factory.empty(self.size))
 
 	def _transmit(self, ctx):
 		array.tanh(ctx.dst, ctx.src)
-		if ctx.mem is not None:
-			array.copy(ctx.mem.odata, ctx.dst)
+		if ctx.trace is not None:
+			array.copy(ctx.trace.odata, ctx.dst)
 
 	def _backprop(self, ctx):
-		array.bptanh(ctx.src, ctx.dst, ctx.mem.odata)
+		array.bptanh(ctx.src, ctx.dst, ctx.trace.odata)
 
 # TODO:
 # class Softmax(VectorElement)

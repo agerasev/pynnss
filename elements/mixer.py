@@ -6,12 +6,12 @@ from pynn.element import Element
 
 class Mixer(Element):
 	class _Context(Element._Context):
-		def __init__(self, size, accum, *args, **kwargs):
-			Element._Context.__init__(self, *args, **kwargs)
+		def __init__(self, size, accum, node):
+			Element._Context.__init__(self, node)
 			self.accum = accum
 
-	def newContext(self, factory, *args, **kwargs):
-		return self._Context(self.size, factory.empty(self.size), *args, **kwargs)
+	def newContext(self, factory):
+		return self._Context(self.size, factory.empty(self.size), self)
 
 	def __init__(self, size, inum, onum, **kwargs):
 		Element.__init__(self, [size]*inum, [size]*onum, **kwargs)
@@ -35,8 +35,8 @@ class Mixer(Element):
 
 
 class Fork(Mixer):
-	def newContext(self, factory, *args, **kwargs):
-		return Element._Context(*args, **kwargs)
+	def newContext(self, factory):
+		return Element._Context(self)
 
 	def __init__(self, size, **kwargs):
 		Mixer.__init__(self, size, 1, 2, **kwargs)
@@ -50,8 +50,8 @@ class Fork(Mixer):
 
 
 class Join(Mixer):
-	def newContext(self, factory, *args, **kwargs):
-		return Element._Context(*args, **kwargs)
+	def newContext(self, factory):
+		return Element._Context(self)
 
 	def __init__(self, size, **kwargs):
 		Mixer.__init__(self, size, 2, 1, **kwargs)

@@ -25,6 +25,9 @@ class Element(Node):
 			def clip(self, value):
 				array.rclip(self.data, -value, value)
 
+			def clear(self):
+				array.clear(self.data)
+
 		def newGradient(self, factory):
 			if self.data is not None:
 				return self._Gradient(factory.zeros(self.data.shape))
@@ -43,8 +46,8 @@ class Element(Node):
 				Element._State._RateConst.__init__(self, factor)
 				self.data = data
 
-			def update(self, src):
-				array.radd_adagrad(self.data, src)
+			def update(self, grad):
+				array.radd_adagrad(self.data, grad.data)
 
 			def apply(self, dst, src):
 				array.rsub_adagrad(dst, src, self.factor, self.data)

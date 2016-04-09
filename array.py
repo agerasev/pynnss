@@ -53,6 +53,10 @@ def newFactory(dtype=None, gpu=False):
 	return _FactoryCPU(dtype=(np.float64 if dtype is None else dtype))
 
 
+def clear(arr):
+	arr.np *= 0
+
+
 def copy(dst, src):
 	np.copyto(dst.np, src.np)
 

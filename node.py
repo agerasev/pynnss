@@ -113,6 +113,9 @@ class Node(NodeInfo):
 		def __init__(self, node):
 			self.node = node
 
+			self.srcs = [None]*node.inum
+			self.dsts = [None]*node.onum
+
 			self.state = None
 			self.trace = None
 
@@ -123,10 +126,7 @@ class Node(NodeInfo):
 			self.rate = None
 
 	def newContext(self, factory):
-		ctx = self._Context(self)
-		ctx.srcs = [None]*self.inum
-		ctx.dsts = [None]*self.onum
-		return ctx
+		return self._Context(self)
 
 	def __init__(self, isizes, osizes, **kwargs):
 		NodeInfo.__init__(self, isizes, osizes)

@@ -9,4 +9,4 @@ from pynn.elements.matrix import Matrix
 from pynn.elements.vector import Bias, Uniform, Tanh
 from pynn.elements.mixer import Mixer, Join, Fork
 
-from pynn.network import Network
+from pynn.network import Network, Path
