@@ -93,34 +93,34 @@ class _Context(Node._Context, _Nodes, _Paths):
 			self.nodes[src[0]].dsts[src[1]] = arr
 			self.nodes[dst[0]].srcs[dst[1]] = arr
 
-	def _readmem(self):
-		for nc, nm in zip(self.nodes, self.mem.nodes):
+	def setmem(self, mem):
+		for nc, nm in zip(self.nodes, mem.nodes):
 			if nm is not None:
 				nm.copyto(nc.mem)
-		for pc, pm in zip(self.paths, self.mem.paths):
+		for pc, pm in zip(self.paths, mem.paths):
 			if pm is not None:
 				array.copy(pc, pm)
 
-	def _writemem(self):
-		for nc, nm in zip(self.nodes, self.mem.nodes):
+	def getmem(self, mem):
+		for nc, nm in zip(self.nodes, mem.nodes):
 			if nm is not None:
 				nc.mem.copyto(nc)
-		for pc, pm in zip(self.paths, self.mem.paths):
+		for pc, pm in zip(self.paths, mem.paths):
 			if pm is not None:
 				array.copy(pm, pc)
 
-	def _readerr(self):
-		for nc, ne in zip(self.nodes, self.err.nodes):
+	def seterr(self, err):
+		for nc, ne in zip(self.nodes, err.nodes):
 			if ne is not None:
 				ne.copyto(nc.err)
-		for pc, pe in zip(self.paths, self.err.paths):
+		for pc, pe in zip(self.paths, err.paths):
 			if pe is not None:
 				array.copy(pc, pe)
 
-	def _writeerr(self):
-		for nc, ne in zip(self.nodes, self.err.nodes):
+	def geterr(self, err):
+		for nc, ne in zip(self.nodes, err.nodes):
 			if ne is not None:
 				nc.err.copyto(nc)
-		for pc, pe in zip(self.paths, self.err.paths):
+		for pc, pe in zip(self.paths, err.paths):
 			if pe is not None:
 				array.copy(pe, pc)

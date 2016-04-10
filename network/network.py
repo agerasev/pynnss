@@ -143,19 +143,15 @@ class Network(Node, _Nodes, _Paths):
 	def _transmit(self, ctx):
 		if self.order is None:
 			self.order = list(range(len(self.nodes)))
-		ctx._readmem()
 		znc = list(zip(self.nodes, ctx.nodes))
 		for i in self.order:
 			n, nc = znc[i]
 			n.transmit(nc)
-		ctx._writemem()
 
 	def _backprop(self, ctx):
 		if self.order is None:
 			self.order = list(range(len(self.nodes)))
-		ctx._readerr()
 		znc = list(zip(self.nodes, ctx.nodes))
 		for i in reversed(self.order):
 			n, nc = znc[i]
 			n.backprop(nc)
-		ctx._writeerr()

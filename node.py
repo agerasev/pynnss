@@ -97,11 +97,20 @@ class Node:
 			self.state = None
 			self.trace = None
 
-			self.mem = None
-			self.err = None
-
 			self.grad = None
 			self.rate = None
+
+		def setmem(mem):
+			pass
+
+		def getmem(mem):
+			pass
+
+		def seterr(err):
+			pass
+
+		def geterr(err):
+			pass
 
 	def newContext(self, factory):
 		return self._Context(self)

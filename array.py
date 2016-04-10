@@ -54,26 +54,32 @@ def newFactory(dtype=None, gpu=False):
 	return _FactoryCPU(dtype=(np.float64 if dtype is None else dtype))
 
 
-stats = {
-	'clear': Profiler(),
-	'copy': Profiler(),
-	'add': Profiler(),
-	'radd': Profiler(),
-	'clip': Profiler(),
-	'rclip': Profiler(),
-	'muls': Profiler(),
-	'mul': Profiler(),
-	'rmuls': Profiler(),
-	'rmul': Profiler(),
-	'dot': Profiler(),
-	'raddouter': Profiler(),
-	'rsubmuls': Profiler(),
-	'rsubmul': Profiler(),
-	'tanh': Profiler(),
-	'bptanh': Profiler(),
-	'radd_adagrad': Profiler(),
-	'rsub_adagrad': Profiler()
-}
+names = [
+	'clear',
+	'copy',
+	'add',
+	'radd',
+	'clip',
+	'rclip',
+	'muls',
+	'mul',
+	'rmuls',
+	'rmul',
+	'dot',
+	'raddouter',
+	'rsubmuls',
+	'rsubmul',
+	'tanh',
+	'bptanh',
+	'softmax',
+	'softmaxloss',
+	'radd_adagrad',
+	'rsub_adagrad'
+]
+
+stats = {}
+for name in names:
+	stats[name] = Profiler()
 
 
 def clear(arr):
@@ -156,7 +162,20 @@ def tanh(dst, src):
 
 def bptanh(dst, err, out):
 	with stats['bptanh']:
-		np.copyto(dst.np, err.np*(1 - out.np**2))
+		dst.np = err.np*(1 - out.np**2)
+
+
+def softmax(dst, src):
+	with stats['softmax']:
+		exp = np.exp(src.np)
+		dst.np = exp/np.sum(exp)
+
+
+def softmaxloss(dst, src, target):
+	with stats['softmaxloss']:
+		np.copyto(dst.np, src.np)
+		dst.np[target] -= 1
+		return -np.log(src.np[target])
 
 
 def radd_adagrad(dst, grad):

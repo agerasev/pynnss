@@ -60,6 +60,16 @@ class Tanh(VectorElement):
 	def _backprop(self, ctx):
 		array.bptanh(ctx.src, ctx.dst, ctx.trace.odata)
 
+
+class Softmax(VectorElement):
+	def __init__(self, size, **kwargs):
+		VectorElement.__init__(self, size, **kwargs)
+
+	def _transmit(self, ctx):
+		array.softmax(ctx.dst, ctx.src)
+
+	def _backprop(self, ctx):
+		raise NotImplementedError()
+
 # TODO:
-# class Softmax(VectorElement)
 # class Rectifier(VectorElement)
