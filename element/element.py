@@ -54,7 +54,7 @@ class Element(Node):
 
 		def newRate(self, factory, rate, adagrad=False):
 			if adagrad:
-				nparray = np.zeros(self.data.shape) + 1e-6
+				nparray = np.zeros(self.data.shape) + 1e-8
 				return self._RateAdaGrad(rate, factory.copynp(nparray))
 			else:
 				return self._RateConst(rate)

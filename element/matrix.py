@@ -8,8 +8,6 @@ from pynn.element import Element
 class MatrixElement(Element):
 	def __init__(self, isize, osize, **kwargs):
 		Element.__init__(self, isize, osize, **kwargs)
-		self.isize = isize
-		self.osize = osize
 
 
 class Matrix(MatrixElement):

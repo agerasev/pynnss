@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import numpy as np
+from pynn.profile import Profiler
 
 
 class _Array:
@@ -53,84 +54,116 @@ def newFactory(dtype=None, gpu=False):
 	return _FactoryCPU(dtype=(np.float64 if dtype is None else dtype))
 
 
+stats = {
+	'clear': Profiler(),
+	'copy': Profiler(),
+	'add': Profiler(),
+	'radd': Profiler(),
+	'clip': Profiler(),
+	'rclip': Profiler(),
+	'muls': Profiler(),
+	'mul': Profiler(),
+	'rmuls': Profiler(),
+	'rmul': Profiler(),
+	'dot': Profiler(),
+	'raddouter': Profiler(),
+	'rsubmuls': Profiler(),
+	'rsubmul': Profiler(),
+	'tanh': Profiler(),
+	'bptanh': Profiler(),
+	'radd_adagrad': Profiler(),
+	'rsub_adagrad': Profiler()
+}
+
+
 def clear(arr):
-	arr.np *= 0
+	with stats['clear']:
+		arr.np *= 0
 
 
 def copy(dst, src):
-	np.copyto(dst.np, src.np)
+	with stats['copy']:
+		np.copyto(dst.np, src.np)
 
 
 def add(dst, one, two):
-	np.add(one.np, two.np, out=dst.np)
+	with stats['add']:
+		np.add(one.np, two.np, out=dst.np)
 
 
 def radd(dst, arr):
-	dst.np += arr.np
+	with stats['radd']:
+		dst.np += arr.np
 
 
 def clip(dst, src, lv, rv):
-	np.clip(src.np, lv, rv, out=dst.np)
+	with stats['clip']:
+		np.clip(src.np, lv, rv, out=dst.np)
 
 
 def rclip(dst, lv, rv):
-	np.clip(dst.np, lv, rv, out=dst.np)
+	with stats['rclip']:
+		np.clip(dst.np, lv, rv, out=dst.np)
 
 
-def mul(dst, one, two):
-	if isinstance(two, _Array):
-		np.mul(one.np, two.np, out=dst.np)
-	else:
+def muls(dst, one, two):
+	with stats['muls']:
 		np.mul(one.np, two, out=dst.np)
 
 
+def mul(dst, one, two):
+	with stats['mul']:
+		np.mul(one.np, two.np, out=dst.np)
+
+
 def rmuls(dst, src):
-	dst.np *= src
+	with stats['rmuls']:
+		dst.np *= src
 
 
 def rmul(dst, src):
-	dst.np *= src.np
+	with stats['rmul']:
+		dst.np *= src.np
 
 
 def dot(dst, one, two):
-	np.dot(one.np, two.np, out=dst.np)
+	with stats['dot']:
+		np.dot(one.np, two.np, out=dst.np)
 
 
 def raddouter(dst, one, two):
-	dst.np += np.outer(one.np, two.np)
+	with stats['raddouter']:
+		so = one.np.shape[0]
+		st = two.np.shape[0]
+		dst.np += np.dot(one.np.reshape(so, 1), two.np.reshape(1, st))
+		# dst.np += np.outer(one.np, two.np)
 
 
 def rsubmuls(dst, one, two):
-	dst.np -= one.np*two
+	with stats['rsubmuls']:
+		dst.np -= one.np*two
 
 
 def rsubmul(dst, one, two):
-	dst.np -= one.np*two.np
+	with stats['rsubmul']:
+		dst.np -= one.np*two.np
 
 
 def tanh(dst, src):
-	np.tanh(src.np, out=dst.np)
-
-
-def _f_bptanh(err, out):
-	return err*(1 - out**2)
-
-_vf_bptanh = np.vectorize(_f_bptanh)
+	with stats['tanh']:
+		np.tanh(src.np, out=dst.np)
 
 
 def bptanh(dst, err, out):
-	np.copyto(dst.np, _vf_bptanh(err.np, out.np))
+	with stats['bptanh']:
+		np.copyto(dst.np, err.np*(1 - out.np**2))
 
 
 def radd_adagrad(dst, grad):
-	dst.np += grad.np**2
-
-
-def _f_adagrad(grad, accum, factor):
-	return grad*factor/np.sqrt(accum)
-
-_vf_adagrad = np.vectorize(_f_adagrad)
+	with stats['radd_adagrad']:
+		dst.np += grad.np**2
 
 
 def rsub_adagrad(dst, grad, factor, rate):
-	dst.np -= _vf_adagrad(grad.np, rate.np, factor)
+	with stats['rsub_adagrad']:
+		dst.np -= (factor/np.sqrt(rate.np))*grad.np

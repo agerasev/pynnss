@@ -1,32 +1,9 @@
 #!/usr/bin/python3
 
-from time import clock
+from pynn.profile import Profiler
 
 
-class NodeInfo:
-	def __init__(self, isizes, osizes):
-		if type(isizes) is int:
-			isizes = [isizes]
-		self.isizes = isizes
-		self.inum = len(isizes)
-		if type(osizes) is int:
-			osizes = [osizes]
-		self.osizes = osizes
-		self.onum = len(osizes)
-
-
-class Node(NodeInfo):
-	class Profiler:
-		def __init__(self):
-			self.start = 0
-			self.time = 0
-
-		def __enter__(self):
-			self.start = clock()
-
-		def __exit__(self, *args):
-			self.time += clock() - self.start
-
+class Node:
 	class _State:
 		def __init__(self):
 			pass
@@ -70,6 +47,7 @@ class Node(NodeInfo):
 		def newGradient(self, factory):
 			return None
 
+		# TODO: move to gradient
 		class _Rate:
 			def __init__(self):
 				pass
@@ -128,12 +106,30 @@ class Node(NodeInfo):
 	def newContext(self, factory):
 		return self._Context(self)
 
+	def _gisize(self):
+		return self.isizes[0]
+
+	isize = property(_gisize)
+
+	def _gosize(self):
+		return self.osizes[0]
+
+	osize = property(_gosize)
+
 	def __init__(self, isizes, osizes, **kwargs):
-		NodeInfo.__init__(self, isizes, osizes)
+		if type(isizes) is int:
+			isizes = [isizes]
+		self.inum = len(isizes)
+		self.isizes = isizes
+
+		if type(osizes) is int:
+			osizes = [osizes]
+		self.onum = len(osizes)
+		self.osizes = osizes
 
 		if kwargs.get('prof', False):
-			self.fstat = self.Profiler()
-			self.bstat = self.Profiler()
+			self.fstat = Profiler()
+			self.bstat = Profiler()
 		else:
 			self.fstat = None
 			self.bstat = None
