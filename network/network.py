@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 
-import pynn.array as array
 from pynn.node import Node
 from pynn.network.base import _Nodes, _Paths
 from pynn.network.state import _State
@@ -140,17 +139,64 @@ class Network(Node, _Nodes, _Paths):
 			self.opaths[i] = Path(src, None, ssize)
 			self._flink[src] = -1
 
+	class _NodeInfo:
+		def __init__(self, inum, onum):
+			self.flag = False
+			self.iflags = [False]*inum
+			self.oflags = [False]*onum
+
+		def transmit(self):
+			if not self.flag:
+				if all(self.iflags):
+					self.flag = True
+					self.oflags = [True for _ in self.oflags]
+					return True
+			return False
+
+	def prepare(self):
+		nodes = [self._NodeInfo(n.inum, n.onum) for n in self.nodes]
+
+		for ip in self.ipaths:
+			nodes[ip.dst[0]].iflags[ip.dst[1]] = True
+		for p in self.paths:
+			if p.mem:
+				nodes[p.dst[0]].iflags[p.dst[1]] = True
+
+		order = []
+		check = 1
+		while check > 0:
+			check = 0
+			for i, n in enumerate(nodes):
+				if n.transmit():
+					for j in range(len(n.oflags)):
+						npi = self._flink[(i, j)]
+						if npi >= 0:
+							dst = self.paths[npi].dst
+							nodes[dst[0]].iflags[dst[1]] = True
+					check += 1
+					order.append(i)
+
+		activated = [n.flag for n in nodes]
+		if not all(activated):
+			nnl = filter(lambda n: not n[1], enumerate(activated))
+			nns = str([n[0] for n in nnl])
+			raise Exception('nodes ' + nns + ' were not activated')
+
+		outputs = [nodes[op.src[0]].oflags[op.src[1]] for op in self.opaths]
+		if not all(outputs):
+			onl = filter(lambda o: not o[1], enumerate(outputs))
+			ons = str([o[0] for o in onl])
+			raise Exception('outputs ' + ons + ' are not ready')
+
+		self.order = order
+
 	def _transmit(self, ctx):
-		if self.order is None:
-			self.order = list(range(len(self.nodes)))
 		znc = list(zip(self.nodes, ctx.nodes))
 		for i in self.order:
 			n, nc = znc[i]
 			n.transmit(nc)
 
 	def _backprop(self, ctx):
-		if self.order is None:
-			self.order = list(range(len(self.nodes)))
 		znc = list(zip(self.nodes, ctx.nodes))
 		for i in reversed(self.order):
 			n, nc = znc[i]
