@@ -14,4 +14,4 @@ from pynn.loss import Loss, SoftmaxLoss
 
 from pynn.network import Network, Path
 
-from pynn.algorithm import Batch
+from pynn.teacher import Teacher

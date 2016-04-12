@@ -7,7 +7,6 @@ from pynn.element.vector import Softmax
 class Loss:
 	class _Context:
 		def __init__(self):
-			self.target = None
 			self.loss = 0.
 
 	def __init__(self):
@@ -19,7 +18,6 @@ class SoftmaxLoss(Loss, Softmax):
 		def __init__(self, node):
 			Loss._Context.__init__(self)
 			Softmax._Context.__init__(self, node)
-			self.target = -1
 
 	def newContext(self, factory):
 		return self._Context(self)
@@ -40,8 +38,12 @@ class SoftmaxLoss(Loss, Softmax):
 		Softmax.__init__(self, size, **kwargs)
 
 	def _transmit(self, ctx):
-		Softmax._transmit(self, ctx)
-		array.copy(ctx.trace.odata, ctx.dst)
+		if ctx.trace is not None:
+			array.softmax(ctx.trace.odata, ctx.src)
+			if ctx.dst is not None:
+				array.copy(ctx.dst, ctx.trace.odata)
+		else:
+			Softmax._transmit(self, ctx)
 
 	def _backprop(self, ctx):
-		ctx.loss = array.softmaxloss(ctx.src, ctx.trace.odata, ctx.target)
+		ctx.loss += array.softmaxloss(ctx.src, ctx.trace.odata, ctx.dst)

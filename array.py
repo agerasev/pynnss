@@ -171,11 +171,10 @@ def softmax(dst, src):
 		dst.np = exp/np.sum(exp)
 
 
-def softmaxloss(dst, src, target):
+def softmaxloss(dst, src, aim):
 	with stats['softmaxloss']:
-		np.copyto(dst.np, src.np)
-		dst.np[target] -= 1
-		return -np.log(src.np[target])
+		np.subtract(src.np, aim.np, out=dst.np)
+		return -np.log(np.dot(src.np, aim.np))
 
 
 def radd_adagrad(dst, grad):
