@@ -13,3 +13,5 @@ from pynn.element.mixer import Mixer, Join, Fork
 from pynn.loss import Loss, SoftmaxLoss
 
 from pynn.network import Network, Path
+
+from pynn.algorithm import Batch
