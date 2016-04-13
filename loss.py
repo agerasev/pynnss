@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from pynn import array
+from pynn.node import Node
 from pynn.element.vector import Softmax
 
 
@@ -11,6 +12,9 @@ class Loss:
 
 	def __init__(self):
 		pass
+
+	def nodetype(self):
+		return Node
 
 
 class SoftmaxLoss(Loss, Softmax):
@@ -47,3 +51,6 @@ class SoftmaxLoss(Loss, Softmax):
 
 	def _backprop(self, ctx):
 		ctx.loss += array.softmaxloss(ctx.src, ctx.trace.odata, ctx.dst)
+
+	def nodetype(self):
+		return Softmax

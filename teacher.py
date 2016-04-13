@@ -1,13 +1,16 @@
 #!/usr/bin/python3
 
 
+class BatchInfo:
+	def __init__(self, size, callback=None):
+		self.size = size
+		self.callback = callback
+
+
 class Teacher:
-	def __init__(
-		self, factory, bsize, net, state=None,
-		rate=1e-1, adagrad=True, clip=5e0
-	):
+	def __init__(self, factory, batch, net, state=None, **opts):
 		self.factory = factory
-		self.bsize = bsize
+		self.batch = batch
 
 		self.net = net
 		net.prepare()
@@ -20,8 +23,11 @@ class Teacher:
 		self.ctx.state = state
 		self.ctx.trace = net.newTrace(factory)
 		self.ctx.grad = state.newGradient(factory)
-		self.ctx.rate = state.newRate(factory, rate, adagrad=adagrad)
-		self.clip = clip
+		self.ctx.rate = state.newRate(
+			factory, opts.get('rate', 1e-1),
+			adagrad=opts.get('adagrad', True)
+		)
+		self.clip = opts.get('clip', 5e0)
 
 		self.ctx.src = factory.empty(net.isize)
 		self.ctx.dst = factory.empty(net.osize)
@@ -32,7 +38,7 @@ class Teacher:
 	def _batch(self, diter):
 		batch = []
 		try:
-			for _ in range(self.bsize):
+			for _ in range(self.batch.size):
 				batch.append(next(diter))
 		except StopIteration:
 			if len(batch) == 0:
@@ -40,6 +46,8 @@ class Teacher:
 
 		ctx = self.ctx
 		ctx.grad.clear()
+		ctx.loss = 0.
+
 		for series in batch:
 			ctx.setmem(self.imem)
 			for i, entry in enumerate(series):
@@ -66,5 +74,7 @@ class Teacher:
 		while True:
 			try:
 				self._batch(diter)
+				if self.batch.callback is not None:
+					self.batch.callback(self.ctx)
 			except StopIteration:
 				break

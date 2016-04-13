@@ -2,10 +2,11 @@
 
 from pynn import array
 from pynn.node import Node
+from pynn.loss import Loss
 from pynn.network.base import _Nodes, _Paths
 
 
-class _Context(Node._Context, _Nodes, _Paths):
+class _Context(Node._Context, Loss._Context, _Nodes, _Paths):
 	class _Srcs:
 		def __init__(self, outer):
 			self.outer = outer
@@ -87,6 +88,7 @@ class _Context(Node._Context, _Nodes, _Paths):
 		self._srcs = [None]*node.inum
 		self._dsts = [None]*node.onum
 		Node._Context.__init__(self, node)
+		Loss._Context.__init__(self)
 		for path, arr in zip(self.node.paths, self.paths):
 			src = path.src
 			dst = path.dst
@@ -124,3 +126,17 @@ class _Context(Node._Context, _Nodes, _Paths):
 		for pc, pe in zip(self.paths, err.paths):
 			if pe is not None:
 				array.copy(pe, pc)
+
+	def _gloss(self):
+		loss = 0.
+		for node in self.nodes:
+			if node is not None and hasattr(node, 'loss'):
+				loss += node.loss
+		return loss
+
+	def _sloss(self, loss):
+		for node in self.nodes:
+			if node is not None and hasattr(node, 'loss'):
+				node.loss = loss
+
+	loss = property(_gloss, _sloss)
