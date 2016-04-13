@@ -10,6 +10,8 @@ class Teacher:
 		self.bsize = bsize
 
 		self.net = net
+		net.prepare()
+
 		if state is None:
 			state = net.newState(factory)
 		self.state = state
@@ -40,15 +42,15 @@ class Teacher:
 		ctx.grad.clear()
 		for series in batch:
 			ctx.setmem(self.imem)
-			for l, entry in enumerate(series):
+			for i, entry in enumerate(series):
 				entry.getinput(ctx.src)
 				self.net.transmit(ctx)
-				ctx.trace.copyto(self.traces[l])
+				self.traces[i].set(ctx.trace)
 
 			ctx.seterr(self.ierr)
-			for l, entry in reversed(list(enumerate(series))):
+			for i, entry in reversed(list(enumerate(series))):
 				entry.getouptut(ctx.dst)
-				self.traces[l].copyto(ctx.trace)
+				ctx.trace.set(self.traces[i])
 				self.net.backprop(ctx)
 
 		ctx.grad.mul(1/len(batch))

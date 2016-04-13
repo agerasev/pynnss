@@ -11,9 +11,9 @@ class _State(Node._State, _Nodes, _Paths):
 			_Paths.__init__(self, paths)
 			Node._State._Memory.__init__(self)
 
-		def copyto(self, out):
-			self._copynodes(out)
-			self._copypaths(out)
+		def set(self, src):
+			self._setnodes(src)
+			self._setpaths(src)
 
 	def newMemory(self, factory):
 		nodes = self._fornodes(lambda n: n.newMemory(factory))
@@ -26,9 +26,9 @@ class _State(Node._State, _Nodes, _Paths):
 			_Paths.__init__(self, paths)
 			Node._State._Error.__init__(self)
 
-		def copyto(self, out):
-			self._copynodes(out)
-			self._copypaths(out)
+		def set(self, src):
+			self._setnodes(src)
+			self._setpaths(src)
 
 	def newError(self, factory):
 		nodes = self._fornodes(lambda n: n.newError(factory))

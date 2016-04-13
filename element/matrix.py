@@ -27,8 +27,8 @@ class Matrix(MatrixElement):
 			Element._Trace.__init__(self)
 			self.idata = idata
 
-		def copyto(self, out):
-			array.copy(out.idata, self.idata)
+		def set(self, src):
+			array.copy(self.idata, src.idata)
 
 	def newTrace(self, factory):
 		return self._Trace(factory.empty(self.isize))

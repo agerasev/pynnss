@@ -95,32 +95,32 @@ class _Context(Node._Context, _Nodes, _Paths):
 
 	def setmem(self, mem):
 		for nc, nm in zip(self.nodes, mem.nodes):
-			if nm is not None:
-				nm.copyto(nc.mem)
+			if nc is not None:
+				nc.setmem(nm)
 		for pc, pm in zip(self.paths, mem.paths):
 			if pm is not None:
 				array.copy(pc, pm)
 
 	def getmem(self, mem):
 		for nc, nm in zip(self.nodes, mem.nodes):
-			if nm is not None:
-				nc.mem.copyto(nc)
+			if nc is not None:
+				nc.getmem(nm)
 		for pc, pm in zip(self.paths, mem.paths):
 			if pm is not None:
 				array.copy(pm, pc)
 
 	def seterr(self, err):
 		for nc, ne in zip(self.nodes, err.nodes):
-			if ne is not None:
-				ne.copyto(nc.err)
+			if nc is not None:
+				nc.seterr(ne)
 		for pc, pe in zip(self.paths, err.paths):
 			if pe is not None:
 				array.copy(pc, pe)
 
 	def geterr(self, err):
 		for nc, ne in zip(self.nodes, err.nodes):
-			if ne is not None:
-				nc.err.copyto(nc)
+			if nc is not None:
+				nc.geterr(ne)
 		for pc, pe in zip(self.paths, err.paths):
 			if pe is not None:
 				array.copy(pe, pc)

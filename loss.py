@@ -27,8 +27,8 @@ class SoftmaxLoss(Loss, Softmax):
 			Softmax._Trace.__init__(self)
 			self.odata = odata
 
-		def copyto(self, out):
-			array.copy(out.odata, self.odata)
+		def set(self, src):
+			array.copy(self.odata, src.odata)
 
 	def newTrace(self, factory):
 		return self._Trace(factory.empty(self.size))

@@ -11,8 +11,8 @@ class Element(Node):
 			Node._State.__init__(self)
 			self.data = data
 
-		def copyto(self, out):
-			array.copy(out.data, self.data)
+		def set(self, src):
+			array.copy(self.data, src.data)
 
 		class _Gradient(Node._State._Gradient):
 			def __init__(self, data):

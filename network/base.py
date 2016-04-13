@@ -27,10 +27,10 @@ class _Nodes:
 	def _fornodes(self, fmap):
 		return _foreach(self.nodes, fmap)
 
-	def _copynodes(self, out):
-		for ns, no in zip(self.nodes, out.nodes):
+	def _setnodes(self, src):
+		for nd, ns in zip(self.nodes, src.nodes):
 			if ns is not None:
-				ns.copyto(no)
+				nd.set(ns)
 
 
 class _Paths:
@@ -40,7 +40,7 @@ class _Paths:
 	def _forpaths(self, fmap):
 		return _foreach(self.paths, fmap)
 
-	def _copypaths(self, out):
-		for ps, po in zip(self.paths, out.paths):
+	def _setpaths(self, src):
+		for pd, ps in zip(self.paths, src.paths):
 			if ps is not None:
-				array.copy(po, ps)
+				array.copy(pd, ps)

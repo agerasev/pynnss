@@ -8,14 +8,14 @@ class Node:
 		def __init__(self):
 			pass
 
-		def copyto(self, out):
+		def set(self, src):
 			raise NotImplementedError()
 
 		class _Memory:
 			def __init__(self):
 				pass
 
-			def copyto(self, out):
+			def set(self, src):
 				pass
 
 		def newMemory(self, factory):
@@ -25,7 +25,7 @@ class Node:
 			def __init__(self):
 				pass
 
-			def copyto(self, out):
+			def set(self, src):
 				pass
 
 		def newError(self, factory):
@@ -65,7 +65,7 @@ class Node:
 		def __init__(self):
 			pass
 
-		def copyto(self, out):
+		def set(self, src):
 			pass
 
 	def newTrace(self, factory):
@@ -100,16 +100,16 @@ class Node:
 			self.grad = None
 			self.rate = None
 
-		def setmem(mem):
+		def setmem(self, mem):
 			pass
 
-		def getmem(mem):
+		def getmem(self, mem):
 			pass
 
-		def seterr(err):
+		def seterr(self, err):
 			pass
 
-		def geterr(err):
+		def geterr(self, err):
 			pass
 
 	def newContext(self, factory):

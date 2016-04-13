@@ -40,8 +40,8 @@ class Network(Node, _Nodes, _Paths):
 			_Nodes.__init__(self, nodes)
 			Node._Trace.__init__(self)
 
-		def copyto(self, out):
-			self._copynodes(out)
+		def set(self, src):
+			self._setnodes(src)
 
 	def newTrace(self, factory):
 		return self._Trace([n.newTrace(factory) for n in self.nodes])
@@ -154,6 +154,10 @@ class Network(Node, _Nodes, _Paths):
 			return False
 
 	def prepare(self):
+		for node in self.nodes:
+			if hasattr(node, 'prepare'):
+				node.prepare()
+
 		nodes = [self._NodeInfo(n.inum, n.onum) for n in self.nodes]
 
 		for ip in self.ipaths:
