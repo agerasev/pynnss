@@ -1,16 +1,11 @@
 #!/usr/bin/python3
 
 
-class BatchInfo:
-	def __init__(self, size, callback=None):
-		self.size = size
-		self.callback = callback
-
-
 class Teacher:
-	def __init__(self, factory, batch, net, state=None, **opts):
+	def __init__(self, factory, data, net, state=None, **kwagrs):
 		self.factory = factory
-		self.batch = batch
+
+		self.data = data
 
 		self.net = net
 		net.prepare()
@@ -24,10 +19,15 @@ class Teacher:
 		self.ctx.trace = net.newTrace(factory)
 		self.ctx.grad = state.newGradient(factory)
 		self.ctx.rate = state.newRate(
-			factory, opts.get('rate', 1e-1),
-			adagrad=opts.get('adagrad', True)
+			factory, kwagrs.get('rate', 1e-1),
+			adagrad=kwagrs.get('adagrad', True)
 		)
-		self.clip = opts.get('clip', 5e0)
+		self.clip = kwagrs.get('clip', 5e0)
+
+		self.traces = None
+		maxlen = kwagrs.get('maxlen', 1)
+		if maxlen > 1:
+			self.traces = [self.net.newTrace(self.factory) for _ in range(maxlen)]
 
 		self.ctx.src = factory.empty(net.isize)
 		self.ctx.dst = factory.empty(net.osize)
@@ -35,15 +35,12 @@ class Teacher:
 		self.imem = state.newMemory(factory)
 		self.ierr = state.newError(factory)
 
-	def _batch(self, diter):
-		batch = []
-		try:
-			for _ in range(self.batch.size):
-				batch.append(next(diter))
-		except StopIteration:
-			if len(batch) == 0:
-				raise StopIteration()
+		self.teachgen = self._TeachGen()
 
+		self.bmon = kwagrs.get('bmon', None)
+		self.emon = kwagrs.get('emon', None)
+
+	def _batch(self, batch):
 		ctx = self.ctx
 		ctx.grad.clear()
 		ctx.loss = 0.
@@ -67,14 +64,28 @@ class Teacher:
 			ctx.rate.update(ctx.grad)
 		ctx.state.learn(ctx.grad, ctx.rate)
 
-	def epoch(self, data, maxlen):
-		self.traces = [self.net.newTrace(self.factory) for i in range(maxlen)]
-
-		diter = iter(data)
-		while True:
+	def _EpochGen(self, epoch):
+		for batch in epoch:
+			self._batch(batch)
 			try:
-				self._batch(diter)
-				if self.batch.callback is not None:
-					self.batch.callback(self.ctx)
+				if self.bmon is not None:
+					self.bmon(self.ctx)
 			except StopIteration:
-				break
+				yield
+
+	def _TeachGen(self):
+		for epoch in self.data:
+			epochgen = self._EpochGen(epoch)
+			try:
+				while True:
+					next(epochgen)
+					yield
+			except StopIteration:
+				try:
+					if self.emon is not None:
+						self.emon(self.ctx)
+				except StopIteration:
+					yield
+
+	def teach(self):
+		next(self.teachgen)
