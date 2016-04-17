@@ -1,6 +1,33 @@
 #!/usr/bin/python3
 
 
+class Feeder:
+	def __init__(self, factory, net, state, imem=None, **kwargs):
+		self.factory = factory
+
+		self.net = net
+		net.prepare()
+
+		self.state = state
+
+		self.ctx = net.newContext(factory)
+		self.ctx.state = state
+
+		self.ctx.src = factory.empty(net.isize)
+		self.ctx.dst = factory.empty(net.osize)
+
+		self.imem = state.newMemory(factory)
+
+	src = property(lambda self: self.ctx.src)
+	dst = property(lambda self: self.ctx.dst)
+
+	def feed(self):
+		self.ctx.setmem(self.imem)
+		while True:
+			self.net.transmit(self.ctx)
+			yield
+
+
 class Teacher:
 	def __init__(self, factory, data, net, state=None, **kwagrs):
 		self.factory = factory
@@ -89,3 +116,4 @@ class Teacher:
 
 	def teach(self):
 		next(self.teachgen)
+		return self.ctx
