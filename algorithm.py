@@ -60,6 +60,9 @@ class Teacher:
 		self.ctx.dst = factory.empty(net.osize)
 
 		self.imem = state.newMemory(factory)
+		self.mem = state.newMemory(factory)
+		self.mem.set(self.imem)
+
 		self.ierr = state.newError(factory)
 
 		self.teachgen = self._TeachGen()
@@ -67,17 +70,21 @@ class Teacher:
 		self.bmon = kwagrs.get('bmon', None)
 		self.emon = kwagrs.get('emon', None)
 
+		self.smem = kwagrs.get('smem', False)
+
 	def _batch(self, batch):
 		ctx = self.ctx
 		ctx.grad.clear()
 		ctx.loss = 0.
 
 		for series in batch:
-			ctx.setmem(self.imem)
+			ctx.setmem(self.mem)
 			for i, entry in enumerate(series):
 				entry.getinput(ctx.src)
 				self.net.transmit(ctx)
 				self.traces[i].set(ctx.trace)
+			if self.smem:
+				ctx.getmem(self.mem)
 
 			ctx.seterr(self.ierr)
 			for i, entry in reversed(list(enumerate(series))):
@@ -92,11 +99,13 @@ class Teacher:
 		ctx.state.learn(ctx.grad, ctx.rate)
 
 	def _EpochGen(self, epoch):
+		if self.smem:
+			self.mem.set(self.imem)
 		for batch in epoch:
 			self._batch(batch)
 			try:
 				if self.bmon is not None:
-					self.bmon(self.ctx)
+					self.bmon(self)
 			except StopIteration:
 				yield
 
@@ -110,7 +119,7 @@ class Teacher:
 			except StopIteration:
 				try:
 					if self.emon is not None:
-						self.emon(self.ctx)
+						self.emon(self)
 				except StopIteration:
 					yield
 
